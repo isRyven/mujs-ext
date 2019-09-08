@@ -360,8 +360,13 @@ static int lex(struct cstate *g)
 		return g->yychar;
 	}
 
-	if (g->yychar == '{')
-		return lexcount(g);
+	if (g->yychar == '{') {
+		// allow matching unescaped curly braces (ES6 annex B)   
+		if (!(*g->source >= '0' && *g->source <= '9'))
+			return L_CHAR;
+		// return the character
+ 		return lexcount(g);
+ 	}
 	if (g->yychar == '[')
 		return lexclass(g);
 	if (g->yychar == '(') {

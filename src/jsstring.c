@@ -234,6 +234,32 @@ static void Sp_substring(js_State *J)
 	js_pushlstring(J, ss, ee - ss);
 }
 
+// ES5.1 (Annex B) added for compatibility reasons
+static void Sp_substr(js_State *J)
+{
+	const char *str = checkstring(J, 0);
+	const char *ss, *ee;
+	int len = utflen(str);
+	int e = 0;
+	int s = js_tointeger(J, 1);
+	int l = js_isdefined(J, 2) ? js_tointeger(J, 2) : len;
+
+	s = s < 0 ? 0 : s > len ? len : s;
+	l = l < 0 ? 0 : l > len ? len : l;
+	e = s + l;
+	e = e < 0 ? 0 : e > len ? len : e;
+
+	if (s < e) {
+		ss = js_utfidxtoptr(str, s);
+		ee = js_utfidxtoptr(ss, e - s);
+	} else {
+		ss = js_utfidxtoptr(str, e);
+		ee = js_utfidxtoptr(ss, s - e);
+	}
+
+	js_pushlstring(J, ss, ee - ss);
+}
+
 static void Sp_toLowerCase(js_State *J)
 {
 	const char *src = checkstring(J, 0);
@@ -695,6 +721,7 @@ void jsB_initstring(js_State *J)
 		jsB_propf(J, "String.prototype.slice", Sp_slice, 2);
 		jsB_propf(J, "String.prototype.split", Sp_split, 2);
 		jsB_propf(J, "String.prototype.substring", Sp_substring, 2);
+		jsB_propf(J, "String.prototype.substr", Sp_substr, 2);
 		jsB_propf(J, "String.prototype.toLowerCase", Sp_toLowerCase, 0);
 		jsB_propf(J, "String.prototype.toLocaleLowerCase", Sp_toLowerCase, 0);
 		jsB_propf(J, "String.prototype.toUpperCase", Sp_toUpperCase, 0);
