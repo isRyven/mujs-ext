@@ -4,3 +4,5 @@
 * Fixed bug, where `pconstruct` haven't preserved error object.
 * Added stack trace printing support to `Error.prototype.toString`.
 * Moved js_malloc, js_realloc, js_free to public header, to allow allocations from external bindings.
+* Increased stack size to 4096 values (from 256).
+* Increased instruction size to int.

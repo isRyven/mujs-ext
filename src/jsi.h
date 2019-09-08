@@ -64,15 +64,14 @@ typedef struct js_Jumpbuf js_Jumpbuf;
 typedef struct js_StackTrace js_StackTrace;
 
 /* Limits */
-
-#define JS_STACKSIZE 256	/* value stack size */
-#define JS_ENVLIMIT 64		/* environment stack size */
+#define JS_STACKSIZE 4096	/* value stack size */
+#define JS_ENVLIMIT 512		/* environment stack size */
 #define JS_TRYLIMIT 64		/* exception stack size */
-#define JS_GCLIMIT 10000	/* run gc cycle every N allocations */
+#define JS_GCLIMIT 10000  	/* run gc cycle every N allocations */
 #define JS_ASTLIMIT 100		/* max nested expressions */
 
 /* instruction size -- change to int if you get integer overflow syntax errors */
-typedef unsigned short js_Instruction;
+typedef int js_Instruction;
 
 /* String interning */
 
