@@ -228,6 +228,7 @@ void js_newcconstructorx(js_State *J, js_CFunction cfun, js_CFunction ccon, cons
 int js_setbot(js_State *J, int n);
 void js_rotnpop(js_State *J, int rot);
 void js_copyrange(js_State *J, int from, int to);
+void js_getprototypeof(js_State *J, int n);
 
 #ifdef __cplusplus
 }

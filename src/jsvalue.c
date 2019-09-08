@@ -546,6 +546,18 @@ int js_instanceof(js_State *J)
 	return 0;
 }
 
+void js_getprototypeof(js_State *J, int n)
+{
+    js_Object *obj;
+    if (!js_isobject(J, n))
+        js_typeerror(J, "not an object");
+    obj = js_toobject(J, n);
+    if (obj->prototype)
+        js_pushobject(J, obj->prototype);
+    else
+        js_pushnull(J);
+}
+
 void js_concat(js_State *J)
 {
 	js_toprimitive(J, -2, JS_HNONE);
