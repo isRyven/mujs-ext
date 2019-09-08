@@ -224,6 +224,7 @@ int js_checkinteger(js_State *J, int idx, int error);
 void *js_malloc(js_State *J, int size);
 void *js_realloc(js_State *J, void *ptr, int size);
 void js_free(js_State *J, void *ptr);
+void js_newcconstructorx(js_State *J, js_CFunction cfun, js_CFunction ccon, const char *name, int length);
 
 #ifdef __cplusplus
 }
