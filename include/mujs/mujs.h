@@ -225,6 +225,9 @@ void *js_malloc(js_State *J, int size);
 void *js_realloc(js_State *J, void *ptr, int size);
 void js_free(js_State *J, void *ptr);
 void js_newcconstructorx(js_State *J, js_CFunction cfun, js_CFunction ccon, const char *name, int length);
+int js_setbot(js_State *J, int n);
+void js_rotnpop(js_State *J, int rot);
+void js_copyrange(js_State *J, int from, int to);
 
 #ifdef __cplusplus
 }

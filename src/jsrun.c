@@ -438,6 +438,33 @@ void js_rot(js_State *J, int n)
 	STACK[TOP-i] = tmp;
 }
 
+int js_setbot(js_State *J, int n)
+{
+    int prevValue = J->bot;
+    J->bot += n;
+    if (J->bot > J->top) {
+        J->bot = prevValue;
+        js_error(J, "stack underflow!");
+    }
+    return n;
+}
+
+void js_rotnpop(js_State *J, int rot)
+{
+    STACK[TOP - rot] = STACK[TOP - 1];
+    TOP -= rot - 1;
+}
+
+void js_copyrange(js_State *J, int from, int to)
+{
+    CHECKSTACK(to - from);
+    for (int idx = from; idx < to; idx++)
+    {
+        STACK[TOP] = *stackidx(J, idx);
+        ++TOP;
+    }
+}
+
 /* Property access that takes care of attributes and getters/setters */
 
 int js_isarrayindex(js_State *J, const char *p, int *idx)

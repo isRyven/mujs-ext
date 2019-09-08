@@ -8,3 +8,6 @@
 * Changed instruction size to int, to allow running bigger functions.
 * Added `js_newcconstructorx` to allow setting constructor's prototype. 
   Push object's prototype, push constructor's prototype (defaults to `Function.prototype`).
+* Added `js_setbot` to offset stack bottom index.
+* Added `js_rotnpop` to rotate and pop `n` values.
+* added `js_copyrange` to copy range of values on the stack to the top.
