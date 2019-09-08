@@ -1150,7 +1150,7 @@ void js_eval(js_State *J)
 
 int js_pconstruct(js_State *J, int n)
 {
-	int savetop = TOP - n - 2;
+	int savetop = TOP - n - 1;
 	if (js_try(J)) {
 		/* clean up the stack to only hold the error object */
 		STACK[savetop] = STACK[TOP-1];
