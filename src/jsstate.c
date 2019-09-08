@@ -100,6 +100,34 @@ int js_tryboolean(js_State *J, int idx, int error)
 	return v;
 }
 
+double js_checknumber(js_State *J, int idx, double error)
+{
+	double v;
+	if (js_isundefined(J, idx))
+		return error;
+	if (js_try(J)) {
+		js_pop(J, 1);
+		return error;
+	}
+	v = js_tonumber(J, idx);
+	js_endtry(J);
+	return v;
+}
+
+int js_checkinteger(js_State *J, int idx, int error)
+{
+	int v;
+	if (js_isundefined(J, idx))
+		return error;
+	if (js_try(J)) {
+		js_pop(J, 1);
+		return error;
+	}
+	v = js_tointeger(J, idx);
+	js_endtry(J);
+	return v;
+}
+
 static void js_loadstringx(js_State *J, const char *filename, const char *source, int iseval)
 {
 	js_Ast *P;

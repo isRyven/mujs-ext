@@ -219,6 +219,9 @@ void js_repr(js_State *J, int idx);
 const char *js_torepr(js_State *J, int idx);
 const char *js_tryrepr(js_State *J, int idx, const char *error);
 
+double js_checknumber(js_State *J, int idx, double error);
+int js_checkinteger(js_State *J, int idx, int error);
+
 #ifdef __cplusplus
 }
 #endif
