@@ -221,6 +221,9 @@ const char *js_tryrepr(js_State *J, int idx, const char *error);
 
 double js_checknumber(js_State *J, int idx, double error);
 int js_checkinteger(js_State *J, int idx, int error);
+void *js_malloc(js_State *J, int size);
+void *js_realloc(js_State *J, void *ptr, int size);
+void js_free(js_State *J, void *ptr);
 
 #ifdef __cplusplus
 }

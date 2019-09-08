@@ -52,10 +52,6 @@ static __inline int signbit(double x) { __int64 i; memcpy(&i, &x, 8); return i>>
 #define soffsetof(x,y) ((int)offsetof(x,y))
 #define nelem(a) (int)(sizeof (a) / sizeof (a)[0])
 
-void *js_malloc(js_State *J, int size);
-void *js_realloc(js_State *J, void *ptr, int size);
-void js_free(js_State *J, void *ptr);
-
 typedef struct js_Regexp js_Regexp;
 typedef struct js_Value js_Value;
 typedef struct js_Object js_Object;

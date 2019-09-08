@@ -3,3 +3,4 @@
 * Added `js_checknumber` and`js_checkinteger` auxiliary functions to return default number if js value is `undefined`.
 * Fixed bug, where `pconstruct` haven't preserved error object.
 * Added stack trace printing support to `Error.prototype.toString`.
+* Moved js_malloc, js_realloc, js_free to public header, to allow allocations from external bindings.
