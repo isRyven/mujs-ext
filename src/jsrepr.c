@@ -2,7 +2,10 @@
 #include "jslex.h"
 #include "jsvalue.h"
 #include "jsbuiltin.h"
+#include "utf.h"
+#include "jscompile.h"
 
+extern void fmtnum(js_State *J, js_Buffer **sb, double n);
 static void reprvalue(js_State *J, js_Buffer **sb);
 
 static void reprnum(js_State *J, js_Buffer **sb, double n)

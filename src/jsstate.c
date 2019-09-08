@@ -5,6 +5,7 @@
 #include "jsrun.h"
 #include "jsbuiltin.h"
 
+#include <errno.h>
 #include <assert.h>
 
 static void *js_defaultalloc(void *actx, void *ptr, int size)

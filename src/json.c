@@ -156,7 +156,7 @@ static void JSON_parse(js_State *J)
 	}
 }
 
-static void fmtnum(js_State *J, js_Buffer **sb, double n)
+void fmtnum(js_State *J, js_Buffer **sb, double n)
 {
 	if (isnan(n)) js_puts(J, sb, "null");
 	else if (isinf(n)) js_puts(J, sb, "null");
