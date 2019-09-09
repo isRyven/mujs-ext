@@ -756,3 +756,31 @@ uint64_t js_tostrhash(const char *str)
 		hash = ((hash << 5) + hash) + c;
 	return hash;
 }
+
+const char* jsV_resolvetypename(js_State *J, js_Value *value, const char* keyName)
+{
+	js_Object *obj;
+    if (value->type != JS_TOBJECT)
+    	return "";
+    obj = value->u.object;
+    if (obj->type == JS_CCFUNCTION )
+        return S_EITHER_STR(obj->u.c.name, "constructor");
+    if (obj->type == JS_CFUNCTION)
+        return S_EITHER_STR(S_EITHER_STR(obj->u.f.function->name, keyName), "function");
+    if (obj->type == JS_COBJECT) {
+        js_Object *current = obj;
+        uint64_t hash = js_tostrhash("constructor");
+        do {
+        	js_Property *prop = (js_Property*)hashtable_find(current->properties, hash);
+        	if (prop) 
+        		return jsV_resolvetypename(J, &prop->value, prop->name);
+        }
+        while((current = current->prototype));
+    }
+  	return "Object";
+}
+
+const char* js_resolvetypename(js_State *J, int idx)
+{
+    return jsV_resolvetypename(J, js_tovalue(J, idx), "");
+}

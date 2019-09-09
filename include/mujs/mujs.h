@@ -259,6 +259,8 @@ void js_pushstringu(js_State *J, const char *v, int isunicode);
 int js_isstringu(js_State *J, int idx);
 void js_pushconst(js_State *J, const char *v);
 void js_pushconstu(js_State *J, const char *v, int isunicode);
+/* fetch instance type name from the constructor */
+const char* js_resolvetypename(js_State *J, int idx);
 
 #ifdef __cplusplus
 }
