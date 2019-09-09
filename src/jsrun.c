@@ -802,6 +802,44 @@ void js_delregistry(js_State *J, const char *name)
 	jsR_delproperty(J, J->R, name);
 }
 
+void js_getlocalregistry(js_State *J, int idx, const char *name)
+{
+	js_Object *obj;
+	if (!js_isobject(J, idx))
+		js_typeerror(J, "not an object");
+	obj = js_toobject(J, idx);
+	if (obj->R)
+		jsR_getproperty(J, obj->R, name);
+	else
+		js_pushundefined(J);
+}
+
+void js_setlocalregistry(js_State *J, int idx, const char *name)
+{
+	js_Object *obj;
+	int lastValue;
+	if (!js_isobject(J, idx))
+		js_typeerror(J, "not an object");
+	lastValue = js_gettop(J) - 1;
+	if (lastValue == idx || lastValue < 1)
+		js_typeerror(J, "expected value");
+	obj = js_toobject(J, idx);
+	if (!obj->R)
+		obj->R = jsV_newobject(J, JS_COBJECT, NULL);
+	jsR_setproperty(J, obj->R, name);
+	js_pop(J, 1);
+}
+
+void js_dellocalregistry(js_State *J, int idx, const char *name)
+{
+	js_Object *obj;
+	if (!js_isobject(J, idx))
+		js_typeerror(J, "not an object");
+	obj = js_toobject(J, idx);
+	if (obj->R)
+		jsR_delproperty(J, obj->R, name);
+}
+
 void js_getglobal(js_State *J, const char *name)
 {
 	jsR_getproperty(J, J->G, name);

@@ -16,3 +16,5 @@
 * Added `js_seal`, `js_freeze`, `js_issealed`, `js_isfrozen` functions to change object extension abilities.
 * Added `js_catch_exit`, `js_exit`, `js_atexit` to issue and handle graceful script exit requests.
 * Added `js_loadstringE` to load code with predefined environment variables (push object, call func).
+* Added `js_getlocalregistry`, `js_setlocalregistry`, `js_dellocalregistry` to define hidden properties in object bound registry.
+  Useful for userdatas, as an alternative to `js_ref`.

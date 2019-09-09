@@ -94,9 +94,10 @@ static void jsG_markobject(js_State *J, int mark, js_Object *obj)
 		jsG_markproperty(J, mark, obj->properties);
 	if (obj->prototype && obj->prototype->gcmark != mark)
 		jsG_markobject(J, mark, obj->prototype);
-	if (obj->type == JS_CITERATOR) {
+	if (obj->type == JS_CITERATOR)
 		jsG_markobject(J, mark, obj->u.iter.target);
-	}
+	if (obj->R && obj->R->gcmark != mark)
+		jsG_markobject(J, mark, obj->R);
 	if (obj->type == JS_CFUNCTION || obj->type == JS_CSCRIPT) {
 		if (obj->u.f.scope && obj->u.f.scope->gcmark != mark)
 			jsG_markenvironment(J, mark, obj->u.f.scope);

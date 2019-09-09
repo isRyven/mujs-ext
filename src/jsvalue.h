@@ -84,6 +84,7 @@ struct js_Object
 	js_Property *properties;
 	int count; /* number of properties, for array sparseness check */
 	js_Object *prototype;
+	js_Object *R; /* local registry for hidden properties */
 	union {
 		int boolean;
 		double number;
