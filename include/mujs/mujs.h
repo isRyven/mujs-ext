@@ -242,6 +242,9 @@ void *js_saveexit(js_State *J); /* returns a jmp_buf */
 void js_exit(js_State *J, int status);
 /* push variables object and call the function */
 void js_loadstringE(js_State *J, const char *filename, const char *source);
+#define JS_MAX_INT +9007199254740992LL
+#define JS_MIN_INT -9007199254740992LL
+#define JS_MAX_STRING 0x7fffffff
 
 #ifdef __cplusplus
 }
