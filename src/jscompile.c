@@ -53,12 +53,7 @@ static void checkfutureword(JF, js_Ast *exp)
 
 static js_Function *newfun(js_State *J, int line, js_Ast *name, js_Ast *params, js_Ast *body, int script, int default_strict)
 {
-	js_Function *F = js_malloc(J, sizeof *F);
-	memset(F, 0, sizeof *F);
-	F->gcmark = 0;
-	F->gcnext = J->gcfun;
-	J->gcfun = F;
-	++J->gccounter;
+	js_Function *F = jsV_newfunction(J);
 
 	F->filename = js_intern(J, J->filename);
 	F->line = line;

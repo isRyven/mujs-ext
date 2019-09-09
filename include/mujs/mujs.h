@@ -30,6 +30,9 @@ extern "C" {
 #endif
 #endif
 
+/* set byte order */
+#undef IS_BIG_ENDIAN
+
 typedef struct js_State js_State;
 
 typedef void *(*js_Alloc)(void *memctx, void *ptr, int size);
@@ -261,6 +264,12 @@ void js_pushconst(js_State *J, const char *v);
 void js_pushconstu(js_State *J, const char *v, int isunicode);
 /* fetch instance type name from the constructor */
 const char* js_resolvetypename(js_State *J, int idx);
+/* precompile binary */
+int js_dumpscript(js_State *J, int idx, char **buf);
+void js_loadbin(js_State *J, const char *source, int length);
+int js_ploadbin(js_State *J, const char *source, int length);
+void js_loadbinfile(js_State *J, const char *filename);
+int js_ploadbinfile(js_State *J, const char *filename);
 
 #ifdef __cplusplus
 }

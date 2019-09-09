@@ -466,6 +466,17 @@ void js_newfunction(js_State *J, js_Function *fun, js_Environment *scope)
 	}
 }
 
+js_Function *jsV_newfunction(js_State *J)
+{
+	js_Function *F = js_malloc(J, sizeof *F);
+	memset(F, 0, sizeof *F);
+	F->gcmark = 0;
+	F->gcnext = J->gcfun;
+	J->gcfun = F;
+	++J->gccounter;
+	return F;
+}
+
 void js_newscript(js_State *J, js_Function *fun, js_Environment *scope)
 {
 	js_Object *obj = jsV_newobject(J, JS_CSCRIPT, NULL);
@@ -774,4 +785,20 @@ const char* jsV_resolvetypename(js_State *J, js_Value *value, const char* keyNam
 const char* js_resolvetypename(js_State *J, int idx)
 {
     return jsV_resolvetypename(J, js_tovalue(J, idx), "");
+}
+
+int js_dumpscript(js_State *J, int idx, char **buffer)
+{
+	js_Object *obj = js_toobject(J, idx);
+	if (obj->type != JS_CSCRIPT)
+		js_typeerror(J, "expected script value");
+	js_Buffer buf = js_dumpfuncbin(J, obj->u.f.function);
+	if (buf.data == NULL)
+		return 0;
+	if (buf.n == 0) {
+		jsbuf_free(J, &buf);
+		return 0;
+	}
+	*buffer = (char*)buf.data;
+	return buf.n;
 }

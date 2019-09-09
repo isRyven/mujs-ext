@@ -25,3 +25,8 @@
   Should now also save the property order, however, indexes are not handled somehow special.
 * Added `js_resolvetypename` to fetch proper instance type name from the constructor.
 * Added facility to write and read octet buffer.
+* Added `js_dumpscript` function to dump script function into binary format.
+* Added `js_loadbin`, `js_ploadbin` functions to parse the precompiled script binary.
+  Script function is pushed on the stack on success.
+* Added `js_loadbinfile`, `js_ploadbinfile` functions to load precompiled scirpt binary from the file. 
+* Added `-c` and `-f` flags to mujs executable, which can be used to precompile and load scripts.

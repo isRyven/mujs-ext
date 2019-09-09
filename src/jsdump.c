@@ -921,3 +921,84 @@ void js_dumpobject(js_State *J, js_Object *obj)
 	printf("}\n");
 }
 
+static void jsC_dumpfuncbin_string(js_State *J, js_Buffer *buf, hashtable_t *strings, const char *str)
+{
+	// 0 -> empty string
+	// positive id -> string reference
+	// 0xFFFFFFFF -> new string
+	if (str[0]) {
+		uint32_t *id = hashtable_find(strings, (uint64_t)str);
+		if (id)
+			jsbuf_putu32(J, buf, *id);
+		else {
+			uint32_t newid = hashtable_count(strings) + 1;
+			hashtable_insert(strings, (uint64_t)str, &newid);
+			jsbuf_putu32(J, buf, 0xFFFFFFFF);
+			jsbuf_putsz(J, buf, str);
+		}
+	} else
+		jsbuf_putu32(J, buf, 0);
+}
+
+static void jsC_dumpfuncbin(js_State *J, js_Function *F, js_Buffer *sb, hashtable_t *strings)
+{
+	int i;
+	int meta = 0;
+
+	jsbuf_puti8(J, sb, BF_FUNCDECL);	
+	/* write meta */
+	jsbuf_puti8(J, sb, BF_FUNCMETA);
+	jsC_dumpfuncbin_string(J, sb, strings, F->name);
+	BITSET(meta, 0, F->script);
+	BITSET(meta, 1, F->lightweight);
+	BITSET(meta, 2, F->strict);
+	BITSET(meta, 3, F->arguments);
+	jsbuf_puti8(J, sb, meta);
+	jsbuf_putu16(J, sb, F->numparams);
+	jsC_dumpfuncbin_string(J, sb, strings, F->filename);
+	jsbuf_puti32(J, sb, F->line);
+	jsbuf_puti32(J, sb, F->lastline);
+	/* write tables */
+	if (F->numlen) {
+		jsbuf_puti8(J, sb, BF_FUNCNUMS);
+		jsbuf_puti32(J, sb, F->numlen);
+		for (i = 0; i < F->numlen; i++)
+			jsbuf_putf64(J, sb, F->numtab[i]);
+	}
+	if (F->strlen) {
+		jsbuf_puti8(J, sb, BF_FUNCSTRS);
+		jsbuf_puti32(J, sb, F->strlen);
+		for (i = 0; i < F->strlen; i++)
+			jsC_dumpfuncbin_string(J, sb, strings, F->strtab[i]);
+	}
+	if (F->varlen) {
+		jsbuf_puti8(J, sb, BF_FUNCVARS);
+		jsbuf_puti32(J, sb, F->varlen);
+		for (i = 0; i < F->varlen; i++)
+			jsC_dumpfuncbin_string(J, sb, strings, F->vartab[i]);
+	}
+	if (F->codelen) {
+		jsbuf_puti8(J, sb, BF_FUNCCODE);
+		jsbuf_puti32(J, sb, F->codelen);
+		for (i = 0; i < F->codelen; i++)
+			jsbuf_puti32(J, sb, F->code[i]);
+	}
+	if (F->funlen) {
+		jsbuf_puti8(J, sb, BF_FUNCFUNS);
+		jsbuf_puti32(J, sb, F->funlen);
+		for (i = 0; i < F->funlen; i++)
+			jsC_dumpfuncbin(J, F->funtab[i], sb, strings);
+	}
+}
+
+js_Buffer js_dumpfuncbin(js_State *J, js_Function *F)
+{
+	js_Buffer buf;
+	jsbuf_init(J, &buf, 512);
+	hashtable_t strings;
+	hashtable_init(&strings, sizeof(uint32_t), 256, NULL);	
+	jsC_dumpfuncbin(J, F, &buf, &strings);
+	hashtable_term(&strings);
+	return buf;
+}
+

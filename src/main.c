@@ -6,6 +6,31 @@
 
 #include "mujs.h"
 
+#if defined(WIN32) || defined(_WIN32) || defined __CYGWIN__
+  #define PATH_SEPARATOR '\\' 
+#else 
+  #define PATH_SEPARATOR '/'
+#endif
+#define MAX_OSPATH 256
+#define ISPATHSEP(X) ((X) == '\\' || (X) == '/' || (X) == PATH_SEPARATOR)
+
+const char* getbasename(const char *path)
+{
+	static char base[MAX_OSPATH] = { 0 };
+	int length = (int)strlen(path) - 1;
+	// skip trailing slashes
+	while (length > 0 && (ISPATHSEP(path[length]))) 
+		length--;
+	while (length > 0 && !(ISPATHSEP(path[length - 1])))
+		length--;
+	strncpy(base, &path[length], MAX_OSPATH);
+	length = strlen(base) - 1;
+	// strip trailing slashes
+	while (length > 0 && (ISPATHSEP(path[length])))
+		base[length--] = '\0';
+	return base;
+}
+
 static char *xoptarg; /* Global argument pointer. */
 static int xoptind = 0; /* Global argv index. */
 static int xgetopt(int argc, char *argv[], char *optstring)
@@ -278,24 +303,29 @@ static void usage(void)
 	fprintf(stderr, "Usage: mujs [options] [script [scriptArgs*]]\n");
 	fprintf(stderr, "\t-i: Enter interactive prompt after running code.\n");
 	fprintf(stderr, "\t-s: Check strictness.\n");
+	fprintf(stderr, "\t-c: Precompile script.\n");
+	fprintf(stderr, "\t-f: Load precompiled script.\n");
 	exit(1);
 }
 
-int
-main(int argc, char **argv)
+int main(int argc, char **argv)
 {
 	char *input;
 	js_State *J;
 	int status = 0;
 	int strict = 0;
 	int interactive = 0;
+	int precompile = 0;
+	int loadprecompile = 0;
 	int i, c;
 
-	while ((c = xgetopt(argc, argv, "is")) != -1) {
+	while ((c = xgetopt(argc, argv, "iscf")) != -1) {
 		switch (c) {
 		default: usage(); break;
 		case 'i': interactive = 1; break;
 		case 's': strict = 1; break;
+		case 'c': precompile = 1; break;
+		case 'f': loadprecompile = 1; break;
 		}
 	}
 
@@ -335,7 +365,6 @@ main(int argc, char **argv)
 		interactive = 1;
 	} else {
 		c = xoptind++;
-
 		js_newarray(J);
 		i = 0;
 		while (xoptind < argc) {
@@ -343,8 +372,37 @@ main(int argc, char **argv)
 			js_setindex(J, -2, i++);
 		}
 		js_setglobal(J, "scriptArgs");
-
-		if (js_dofile(J, argv[c]))
+		if (precompile) {
+			if (!js_ploadfile(J, argv[c])) {
+				char *buf;
+				int size = js_dumpscript(J, -1, &buf);
+				if (buf) {
+					char outpath[MAX_OSPATH] = {0};
+					sprintf(outpath, "./%s.out", getbasename(argv[c]));
+					FILE *fd = fopen(outpath, "wb+");
+					int writes = fwrite(buf, 1, size, fd);
+					if (writes != size) {
+						printf("could not write out buffer\n");
+						status = 1;
+					}
+					fclose(fd);
+					js_free(J, buf);
+				} else
+					status = 1;
+			} else
+				status = 1;
+		} else if (loadprecompile) {
+			if (!js_ploadbinfile(J, argv[c])) {
+				js_pushundefined(J);
+				if (js_pcall(J, 0)) {
+					fprintf(stderr, "%s\n", js_tostring(J, -1));
+					status = 1;
+				}
+			} else {
+				fprintf(stderr, "%s\n", js_tostring(J, -1));
+				status = 1;
+			}
+		} else if (js_dofile(J, argv[c]))
 			status = 1;
 	}
 

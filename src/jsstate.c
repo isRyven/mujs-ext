@@ -270,6 +270,173 @@ int js_dofile(js_State *J, const char *filename)
 	return 0;
 }
 
+static const char* js_loadfuncbin_string(js_State *J, js_Buffer *sb, hashtable_t *strings) 
+{
+	uint32_t id = jsbuf_getu32(J, sb);
+	if (id == 0xFFFFFFFF) {
+		const char* temps = jsbuf_gets(J, sb);
+		const char *str = js_intern(J, temps);
+		uint64_t addr = (uint64_t)str;
+		hashtable_insert(strings, (hashtable_count(strings) + 1), &addr);
+		return str;
+	} else if (id == 0)
+		return "";
+	return *(const char**)hashtable_find(strings, id);
+}
+
+static js_Function* js_loadfuncbin(js_State *J, js_Buffer *sb, hashtable_t *strings) 
+{
+	int tempi, len, i;
+	js_Function *F = jsV_newfunction(J);
+	if (jsbuf_geti8(J, sb) != BF_FUNCDECL)
+		js_error(J, "invalid binary");
+	while (sb->n < sb->m) {
+		tempi = jsbuf_geti8(J, sb);
+		if (tempi == BF_FUNCMETA) {
+			F->name = js_loadfuncbin_string(J, sb, strings);
+			tempi = jsbuf_geti8(J, sb);
+			F->script = BITGET(tempi, 0); 
+			F->lightweight = BITGET(tempi, 1); 
+			F->strict = BITGET(tempi, 2); 
+			F->arguments = BITGET(tempi, 3);
+			F->numparams = (int)jsbuf_getu16(J, sb);
+			F->filename = js_loadfuncbin_string(J, sb, strings);
+			F->line = jsbuf_geti32(J, sb);
+			F->lastline = jsbuf_geti32(J, sb);
+		} else if (tempi == BF_FUNCNUMS) {
+			len = jsbuf_geti32(J, sb);
+			F->numtab = js_malloc(J, sizeof(double) * len);
+			F->numlen = len;
+			for (i = 0; i < len; ++i)
+				F->numtab[i] = jsbuf_getf64(J, sb);
+		} else if (tempi == BF_FUNCSTRS) {
+			len = jsbuf_geti32(J, sb);
+			F->strtab = js_malloc(J, sizeof(char*) * len);
+			F->strlen = len;
+			for (i = 0; i < len; ++i)
+				F->strtab[i] = js_loadfuncbin_string(J, sb, strings);
+		} else if (tempi == BF_FUNCVARS) {
+			len = jsbuf_geti32(J, sb);
+			F->vartab = js_malloc(J, sizeof(char*) * len);
+			F->varlen = len;
+			for (i = 0; i < len; ++i)
+				F->vartab[i] = js_loadfuncbin_string(J, sb, strings);
+		} else if (tempi == BF_FUNCCODE) {
+			len = jsbuf_geti32(J, sb);
+			F->code = js_malloc(J, sizeof(js_Instruction) * len);
+			F->codelen = len;
+			for (i = 0; i < len; ++i)
+				F->code[i] = jsbuf_geti32(J, sb);
+		} else if (tempi == BF_FUNCFUNS) {
+			len = jsbuf_geti32(J, sb);
+			F->funtab = js_malloc(J, sizeof(js_Function*) * len);
+			F->funlen = len;
+			for (i = 0; i < len; ++i)
+				F->funtab[i] = js_loadfuncbin(J, sb, strings);
+		} else if (tempi == BF_FUNCDECL) {
+			sb->n--;
+			break;
+		} else
+			js_error(J, "invalid binary");
+	}
+	return F;
+}
+
+void js_loadbin(js_State *J, const char *source, int length)
+{
+	js_Buffer buf;
+	js_Function *F;
+	hashtable_t strings;
+	hashtable_init(&strings, sizeof(uint64_t), 256, NULL);;
+	jsbuf_init(J, &buf, length);
+	jsbuf_putb(J, &buf, (uint8_t*)source, length);
+	buf.n = 0; // reset cursor
+	buf.m = length; // reset length for reference
+	if (js_try(J))
+	{
+		jsbuf_free(J, &buf);
+		hashtable_term(&strings);
+		js_throw(J);
+	}
+	F = js_loadfuncbin(J, &buf, &strings);
+	js_newscript(J, F, J->GE);
+	js_endtry(J);
+	jsbuf_free(J, &buf);
+	hashtable_term(&strings);
+}
+
+int js_ploadbin(js_State *J, const char *source, int length)
+{
+	if (js_try(J))
+		return 1;
+	js_loadbin(J, source,  length);
+	js_endtry(J);
+	return 0;
+}
+
+void js_loadbinfile(js_State *J, const char *filename)
+{
+	FILE *f;
+	char *s;
+	int n, t;
+
+	f = fopen(filename, "rb");
+	if (!f) {
+		js_error(J, "cannot open file '%s': %s", filename, strerror(errno));
+	}
+
+	if (fseek(f, 0, SEEK_END) < 0) {
+		fclose(f);
+		js_error(J, "cannot seek in file '%s': %s", filename, strerror(errno));
+	}
+
+	n = ftell(f);
+	if (n < 0) {
+		fclose(f);
+		js_error(J, "cannot tell in file '%s': %s", filename, strerror(errno));
+	}
+
+	if (fseek(f, 0, SEEK_SET) < 0) {
+		fclose(f);
+		js_error(J, "cannot seek in file '%s': %s", filename, strerror(errno));
+	}
+
+	if (js_try(J)) {
+		fclose(f);
+		js_throw(J);
+	}
+	s = js_malloc(J, n);
+	js_endtry(J);
+
+	t = fread(s, 1, (size_t)n, f);
+	if (t != n) {
+		js_free(J, s);
+		fclose(f);
+		js_error(J, "cannot read data from file '%s': %s", filename, strerror(errno));
+	}
+
+	if (js_try(J)) {
+		js_free(J, s);
+		fclose(f);
+		js_throw(J);
+	}
+
+	js_loadbin(J, s, n);
+
+	js_free(J, s);
+	fclose(f);
+	js_endtry(J);
+}
+
+int js_ploadbinfile(js_State *J, const char *filename)
+{
+	if (js_try(J))
+		return 1;
+	js_loadbinfile(J, filename);
+	js_endtry(J);
+	return 0;
+}
+
 js_Panic js_atpanic(js_State *J, js_Panic panic)
 {
 	js_Panic old = J->panic;

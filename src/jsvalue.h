@@ -188,4 +188,18 @@ int jsV_getstrsize(js_State *J, js_Value *v);
 
 const char* jsV_resolvetypename(js_State *J, js_Value *value, const char* keyName);
 
+typedef enum {
+	BF_NOOP,
+	BF_FUNCDECL,
+	BF_FUNCMETA,
+	BF_FUNCNUMS,
+	BF_FUNCSTRS,
+	BF_FUNCVARS,
+	BF_FUNCCODE,
+	BF_FUNCFUNS 
+} binfuncseg_t;
+
+js_Buffer js_dumpfuncbin(js_State *J, js_Function *F);
+js_Function *jsV_newfunction(js_State *J);
+
 #endif
