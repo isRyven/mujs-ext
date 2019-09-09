@@ -303,6 +303,7 @@ static void usage(void)
 	fprintf(stderr, "Usage: mujs [options] [script [scriptArgs*]]\n");
 	fprintf(stderr, "\t-i: Enter interactive prompt after running code.\n");
 	fprintf(stderr, "\t-s: Check strictness.\n");
+	fprintf(stderr, "\t-e: Evaluate string.\n");
 	fprintf(stderr, "\t-c: Precompile script.\n");
 	fprintf(stderr, "\t-f: Load precompiled script.\n");
 	exit(1);
@@ -315,15 +316,17 @@ int main(int argc, char **argv)
 	int status = 0;
 	int strict = 0;
 	int interactive = 0;
+	int evalstr = 0;
 	int precompile = 0;
 	int loadprecompile = 0;
 	int i, c;
 
-	while ((c = xgetopt(argc, argv, "iscf")) != -1) {
+	while ((c = xgetopt(argc, argv, "isecf")) != -1) {
 		switch (c) {
 		default: usage(); break;
 		case 'i': interactive = 1; break;
 		case 's': strict = 1; break;
+		case 'e': evalstr = 1; break;
 		case 'c': precompile = 1; break;
 		case 'f': loadprecompile = 1; break;
 		}
@@ -372,7 +375,10 @@ int main(int argc, char **argv)
 			js_setindex(J, -2, i++);
 		}
 		js_setglobal(J, "scriptArgs");
-		if (precompile) {
+		if (evalstr) {
+			if (eval_print(J, argv[c]))
+				status = 1;
+		} else if (precompile) {
 			if (!js_ploadfile(J, argv[c])) {
 				char *buf;
 				int size = js_dumpscript(J, -1, &buf);
