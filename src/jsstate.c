@@ -161,6 +161,29 @@ void js_loadstring(js_State *J, const char *filename, const char *source)
 	js_loadstringx(J, filename, source, 0);
 }
 
+void js_loadstringE(js_State *J, const char *filename, const char *source)
+{
+	if (!js_isobject(J, -1))
+		js_typeerror(J, "expected object");
+
+	js_Ast *P;
+	js_Function *F;
+
+	if (js_try(J)) {
+		jsP_freeparse(J);
+		js_throw(J);
+	}
+
+	P = jsP_parse(J, filename, source);
+	F = jsC_compilescript(J, P, J->default_strict);
+	jsP_freeparse(J);
+
+	js_Environment *env = jsR_newenvironment(J, js_toobject(J, -1), J->GE);
+	js_newscript(J, F, env);
+	
+	js_endtry(J);
+}
+
 void js_loadfile(js_State *J, const char *filename)
 {
 	FILE *f;

@@ -240,6 +240,8 @@ typedef void (*js_Exit)(js_State *J, int status);
 void *js_saveexit(js_State *J); /* returns a jmp_buf */
 #define js_catch_exit(J) setjmp(js_saveexit(J))
 void js_exit(js_State *J, int status);
+/* push variables object and call the function */
+void js_loadstringE(js_State *J, const char *filename, const char *source);
 
 #ifdef __cplusplus
 }
