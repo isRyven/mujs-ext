@@ -236,6 +236,10 @@ void js_seal(js_State *J);
 void js_freeze(js_State *J);
 int js_issealed(js_State *J);
 int js_isfrozen(js_State *J);
+typedef void (*js_Exit)(js_State *J, int status);
+void *js_saveexit(js_State *J); /* returns a jmp_buf */
+#define js_catch_exit(J) setjmp(js_saveexit(J))
+void js_exit(js_State *J, int status);
 
 #ifdef __cplusplus
 }

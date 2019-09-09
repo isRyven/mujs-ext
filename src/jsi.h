@@ -155,6 +155,7 @@ struct js_State
 	js_Alloc alloc;
 	js_Report report;
 	js_Panic panic;
+	js_Exit exit;
 
 	js_StringNode *strings;
 
@@ -230,6 +231,10 @@ struct js_State
 	/* exception stack */
 	int trytop;
 	js_Jumpbuf trybuf[JS_TRYLIMIT];
+
+	/* exit */
+	int exitbufset;
+	js_Jumpbuf exitbuf;
 };
 
 #endif

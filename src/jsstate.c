@@ -34,6 +34,11 @@ static void js_defaultpanic(js_State *J)
 	/* return to javascript to abort */
 }
 
+static void js_defaultexit(js_State *J, int status)
+{
+	/* return to javascript to abort */
+}
+
 int js_ploadstring(js_State *J, const char *filename, const char *source)
 {
 	if (js_try(J))
@@ -270,6 +275,38 @@ void *js_getcontext(js_State *J)
 	return J->uctx;
 }
 
+void *js_saveexit(js_State *J)
+{
+	if (J->exitbufset)
+		js_error(J, "exit buffer already set");
+	J->exitbufset = 1;
+	J->exitbuf.E = J->E;
+	J->exitbuf.envtop = J->envtop;
+	J->exitbuf.tracetop = J->tracetop;
+	J->exitbuf.top = J->top;
+	J->exitbuf.bot = J->bot;
+	J->exitbuf.strict = J->strict;
+	J->exitbuf.pc = NULL;
+	return J->exitbuf.buf;
+}
+
+void js_exit(js_State *J, int status)
+{
+	if (J->exitbufset) {
+		J->E = J->exitbuf.E;
+		J->envtop = J->exitbuf.envtop;
+		J->tracetop = J->exitbuf.tracetop;
+		J->top = J->exitbuf.top;
+		J->bot = J->exitbuf.bot;
+		J->strict = J->exitbuf.strict;
+		js_pushnumber(J, (double)status);
+		longjmp(J->exitbuf.buf, 1);
+	}
+	if (J->exit)
+		J->exit(J, status);
+	exit(status);
+}
+
 js_State *js_newstate(js_Alloc alloc, void *actx, int flags)
 {
 	js_State *J;
@@ -296,6 +333,7 @@ js_State *js_newstate(js_Alloc alloc, void *actx, int flags)
 
 	J->report = js_defaultreport;
 	J->panic = js_defaultpanic;
+	J->exit = js_defaultexit;
 
 	J->stack = alloc(actx, NULL, JS_STACKSIZE * sizeof *J->stack);
 	if (!J->stack) {
