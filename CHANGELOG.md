@@ -21,3 +21,5 @@
 * Added `js_arefb`, `js_aunrefb` convenience facility to internally create one-way reference between objects.  
   This prevents garbage collection of referenced object, until its parent is collected.
 * Increased ASCII strings performance.
+* Improved property look up performance.
+  Should now also save the property order, however, indexes are not handled somehow special.

@@ -1,149 +1,33 @@
 #include "jsi.h"
 #include "jsvalue.h"
 
-/*
-	Use an AA-tree to quickly look up properties in objects:
-
-	The level of every leaf node is one.
-	The level of every left child is one less than its parent.
-	The level of every right child is equal or one less than its parent.
-	The level of every right grandchild is less than its grandparent.
-	Every node of level greater than one has two children.
-
-	A link where the child's level is equal to that of its parent is called a horizontal link.
-	Individual right horizontal links are allowed, but consecutive ones are forbidden.
-	Left horizontal links are forbidden.
-
-	skew() fixes left horizontal links.
-	split() fixes consecutive right horizontal links.
-*/
-
-static js_Property sentinel = {
-	"",
-	&sentinel, &sentinel,
-	0, 0,
-	{ {0}, {0}, JS_TUNDEFINED },
-	NULL, NULL
-};
-
 static js_Property *newproperty(js_State *J, js_Object *obj, const char *name)
 {
-	js_Property *node = js_malloc(J, sizeof *node);
-	node->name = js_intern(J, name);
-	node->left = node->right = &sentinel;
-	node->level = 1;
-	node->atts = 0;
-	node->value.type = JS_TUNDEFINED;
-	node->value.u.number = 0;
-	node->getter = NULL;
-	node->setter = NULL;
+	js_Property node; 
+	node.name = js_intern(J, name); 
+	node.hash = js_tostrhash(name);
+	node.atts = 0;
+	node.value.type = JS_TUNDEFINED;
+	node.value.u.number = 0;
+	node.getter = NULL;
+	node.setter = NULL;
+	js_Property *prop = hashtable_insert(obj->properties, node.hash, &node);
 	++obj->count;
-	return node;
+	return prop;
 }
 
-static js_Property *lookup(js_Property *node, const char *name)
+static js_Property *addproperty(js_State *J, js_Object *obj, const char *name)
 {
-	while (node != &sentinel) {
-		int c = strcmp(name, node->name);
-		if (c == 0)
-			return node;
-		else if (c < 0)
-			node = node->left;
-		else
-			node = node->right;
-	}
-	return NULL;
+	js_Property *property = hashtable_find(obj->properties, js_tostrhash(name));
+	if (property)
+		return property;
+	return newproperty(J, obj, name);
 }
 
-static js_Property *skew(js_Property *node)
+static void freeproperty(js_State *J, js_Object *obj, uint64_t hash)
 {
-	if (node->left->level == node->level) {
-		js_Property *temp = node;
-		node = node->left;
-		temp->left = node->right;
-		node->right = temp;
-	}
-	return node;
-}
-
-static js_Property *split(js_Property *node)
-{
-	if (node->right->right->level == node->level) {
-		js_Property *temp = node;
-		node = node->right;
-		temp->right = node->left;
-		node->left = temp;
-		++node->level;
-	}
-	return node;
-}
-
-static js_Property *insert(js_State *J, js_Object *obj, js_Property *node, const char *name, js_Property **result)
-{
-	if (node != &sentinel) {
-		int c = strcmp(name, node->name);
-		if (c < 0)
-			node->left = insert(J, obj, node->left, name, result);
-		else if (c > 0)
-			node->right = insert(J, obj, node->right, name, result);
-		else
-			return *result = node;
-		node = skew(node);
-		node = split(node);
-		return node;
-	}
-	return *result = newproperty(J, obj, name);
-}
-
-static void freeproperty(js_State *J, js_Object *obj, js_Property *node)
-{
-	js_free(J, node);
+	hashtable_remove(obj->properties, hash);
 	--obj->count;
-}
-
-static js_Property *delete(js_State *J, js_Object *obj, js_Property *node, const char *name)
-{
-	js_Property *temp, *succ;
-
-	if (node != &sentinel) {
-		int c = strcmp(name, node->name);
-		if (c < 0) {
-			node->left = delete(J, obj, node->left, name);
-		} else if (c > 0) {
-			node->right = delete(J, obj, node->right, name);
-		} else {
-			if (node->left == &sentinel) {
-				temp = node;
-				node = node->right;
-				freeproperty(J, obj, temp);
-			} else if (node->right == &sentinel) {
-				temp = node;
-				node = node->left;
-				freeproperty(J, obj, temp);
-			} else {
-				succ = node->right;
-				while (succ->left != &sentinel)
-					succ = succ->left;
-				node->name = succ->name;
-				node->atts = succ->atts;
-				node->value = succ->value;
-				node->right = delete(J, obj, node->right, succ->name);
-			}
-		}
-
-		if (node->left->level < node->level - 1 ||
-			node->right->level < node->level - 1)
-		{
-			if (node->right->level > --node->level)
-				node->right->level = node->level;
-			node = skew(node);
-			node->right = skew(node->right);
-			node->right->right = skew(node->right->right);
-			node = split(node);
-			node->right = split(node->right);
-		}
-	}
-	return node;
 }
 
 js_Object *jsV_newobject(js_State *J, enum js_Class type, js_Object *prototype)
@@ -156,22 +40,24 @@ js_Object *jsV_newobject(js_State *J, enum js_Class type, js_Object *prototype)
 	++J->gccounter;
 
 	obj->type = type;
-	obj->properties = &sentinel;
 	obj->prototype = prototype;
 	obj->extensible = 1;
+	obj->properties = js_malloc(J, sizeof(hashtable_t));
+	hashtable_init(obj->properties, sizeof(js_Property), 8, 0);
 	return obj;
 }
 
 js_Property *jsV_getownproperty(js_State *J, js_Object *obj, const char *name)
 {
-	return lookup(obj->properties, name);
+	return (js_Property*)hashtable_find(obj->properties, js_tostrhash(name));
 }
 
 js_Property *jsV_getpropertyx(js_State *J, js_Object *obj, const char *name, int *own)
 {
+	uint64_t hash = js_tostrhash(name);
 	*own = 1;
 	do {
-		js_Property *ref = lookup(obj->properties, name);
+		js_Property *ref = (js_Property*)hashtable_find(obj->properties, hash);
 		if (ref)
 			return ref;
 		obj = obj->prototype;
@@ -182,8 +68,9 @@ js_Property *jsV_getpropertyx(js_State *J, js_Object *obj, const char *name, int
 
 js_Property *jsV_getproperty(js_State *J, js_Object *obj, const char *name)
 {
+	uint64_t hash = js_tostrhash(name);
 	do {
-		js_Property *ref = lookup(obj->properties, name);
+		js_Property *ref = (js_Property*)hashtable_find(obj->properties, hash);
 		if (ref)
 			return ref;
 		obj = obj->prototype;
@@ -193,8 +80,9 @@ js_Property *jsV_getproperty(js_State *J, js_Object *obj, const char *name)
 
 static js_Property *jsV_getenumproperty(js_State *J, js_Object *obj, const char *name)
 {
+	uint64_t hash = js_tostrhash(name);
 	do {
-		js_Property *ref = lookup(obj->properties, name);
+		js_Property *ref = (js_Property*)hashtable_find(obj->properties, hash);
 		if (ref && !(ref->atts & JS_DONTENUM))
 			return ref;
 		obj = obj->prototype;
@@ -204,41 +92,33 @@ static js_Property *jsV_getenumproperty(js_State *J, js_Object *obj, const char 
 
 js_Property *jsV_setproperty(js_State *J, js_Object *obj, const char *name)
 {
-	js_Property *result;
-
 	if (!obj->extensible) {
-		result = lookup(obj->properties, name);
-		if (J->strict && !result)
+		js_Property *property = (js_Property*)hashtable_find(obj->properties, js_tostrhash(name));
+		if (J->strict && !property)
 			js_typeerror(J, "object is non-extensible");
-		return result;
+		return property;
 	}
-
-	obj->properties = insert(J, obj, obj->properties, name, &result);
-
-	return result;
+	return addproperty(J, obj, name);
 }
 
 void jsV_delproperty(js_State *J, js_Object *obj, const char *name)
 {
-	obj->properties = delete(J, obj, obj->properties, name);
+	freeproperty(J, obj, js_tostrhash(name));
 }
 
 /* Flatten hierarchy of enumerable properties into an iterator object */
-
-static js_Iterator *itwalk(js_State *J, js_Iterator *iter, js_Property *prop, js_Object *seen)
+static js_Iterator *itwalk(js_State *J, js_Iterator *iter, js_Object *obj, js_Object *seen)
 {
-	if (prop->right != &sentinel)
-		iter = itwalk(J, iter, prop->right, seen);
-	if (!(prop->atts & JS_DONTENUM)) {
-		if (!seen || !jsV_getenumproperty(J, seen, prop->name)) {
-			js_Iterator *head = js_malloc(J, sizeof *head);
-			head->name = prop->name;
-			head->next = iter;
-			iter = head;
+	hashtable_foreach(js_Property, ref, obj->properties) {
+		if (!(ref->atts & JS_DONTENUM)) {
+			if (!seen || !jsV_getenumproperty(J, seen, ref->name)) {
+				js_Iterator *head = js_malloc(J, sizeof *head);
+				head->name = ref->name;
+				head->next = iter;
+				iter = head;
+			}
 		}
 	}
-	if (prop->left != &sentinel)
-		iter = itwalk(J, iter, prop->left, seen);
 	return iter;
 }
 
@@ -247,28 +127,28 @@ static js_Iterator *itflatten(js_State *J, js_Object *obj)
 	js_Iterator *iter = NULL;
 	if (obj->prototype)
 		iter = itflatten(J, obj->prototype);
-	if (obj->properties != &sentinel)
-		iter = itwalk(J, iter, obj->properties, obj->prototype);
+	if (hashtable_count(obj->properties) > 0)
+		iter = itwalk(J, iter, obj, obj->prototype);
 	return iter;
 }
 
 js_Object *jsV_newiterator(js_State *J, js_Object *obj, int own)
 {
+	js_StringNode *node;
 	char buf[32];
 	int k;
-	js_StringNode *node;
 	js_Object *io = jsV_newobject(J, JS_CITERATOR, NULL);
 	io->u.iter.target = obj;
 	if (own) {
 		io->u.iter.head = NULL;
-		if (obj->properties != &sentinel)
-			io->u.iter.head = itwalk(J, io->u.iter.head, obj->properties, NULL);
+		if (hashtable_count(obj->properties) > 0)
+			io->u.iter.head = itwalk(J, io->u.iter.head, obj, NULL);
 	} else {
 		io->u.iter.head = itflatten(J, obj);
 	}
 	if (obj->type == JS_CSTRING) {
-		js_Iterator *tail = io->u.iter.head;
 		node = js_tostringnode(obj->u.s.u.ptr8);
+		js_Iterator *tail = io->u.iter.head;
 		if (tail)
 			while (tail->next)
 				tail = tail->next;
@@ -292,8 +172,8 @@ js_Object *jsV_newiterator(js_State *J, js_Object *obj, int own)
 
 const char *jsV_nextiterator(js_State *J, js_Object *io)
 {
-	int k;
 	js_StringNode *node;
+	int k;
 	if (io->type != JS_CITERATOR)
 		js_typeerror(J, "not an iterator");
 	while (io->u.iter.head) {

@@ -902,23 +902,22 @@ void js_dumpvalue(js_State *J, js_Value v)
 	}
 }
 
-static void js_dumpproperty(js_State *J, js_Property *node)
+static void js_dumpproperty(js_State *J, js_Object *obj)
 {
 	minify = 0;
-	if (node->left->level)
-		js_dumpproperty(J, node->left);
-	printf("\t%s: ", node->name);
-	js_dumpvalue(J, node->value);
-	printf(",\n");
-	if (node->right->level)
-		js_dumpproperty(J, node->right);
+	hashtable_foreach(js_Property, prop, obj->properties) {
+		printf("\t%s: ", prop->name);
+		js_dumpvalue(J, prop->value);
+		printf(",\n");
+	}
 }
 
 void js_dumpobject(js_State *J, js_Object *obj)
 {
 	minify = 0;
 	printf("{\n");
-	if (obj->properties->level)
-		js_dumpproperty(J, obj->properties);
+	if (hashtable_count(obj->properties))
+		js_dumpproperty(J, obj);
 	printf("}\n");
 }
+

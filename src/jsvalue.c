@@ -748,3 +748,11 @@ int jsV_getstrsize(js_State *J, js_Value *v)
 	return 0;
 }
 
+uint64_t js_tostrhash(const char *str)
+{
+	uint64_t hash = 5381;
+	int c;
+	while ((c = *str++))
+		hash = ((hash << 5) + hash) + c;
+	return hash;
+}

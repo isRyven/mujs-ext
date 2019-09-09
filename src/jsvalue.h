@@ -83,7 +83,7 @@ struct js_Object
 {
 	enum js_Class type;
 	int extensible;
-	js_Property *properties;
+	hashtable_t *properties;
 	int count; /* number of properties, for array sparseness check */
 	js_Object *prototype;
 	js_Object *R; /* local registry for hidden properties */
@@ -124,13 +124,12 @@ struct js_Object
 
 struct js_Property
 {
+    js_Value value;
 	const char *name;
-	js_Property *left, *right;
-	int level;
-	int atts;
-	js_Value value;
 	js_Object *getter;
 	js_Object *setter;
+	uint64_t hash;
+	int atts;
 };
 
 struct js_Iterator
@@ -186,5 +185,7 @@ void js_dumpvalue(js_State *J, js_Value v);
 void js_newstringfrom(js_State *J, int idx);
 int jsV_getstrlen(js_State *J, js_Value *v);
 int jsV_getstrsize(js_State *J, js_Value *v);
+
+uint64_t js_tostrhash(const char *str);
 
 #endif

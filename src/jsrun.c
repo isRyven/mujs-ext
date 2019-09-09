@@ -1,3 +1,5 @@
+#define HASHTABLE_IMPLEMENTATION
+
 #include "jsi.h"
 #include "jscompile.h"
 #include "jsvalue.h"

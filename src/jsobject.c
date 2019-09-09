@@ -138,14 +138,12 @@ static void O_getOwnPropertyDescriptor(js_State *J)
 	}
 }
 
-static int O_getOwnPropertyNames_walk(js_State *J, js_Property *ref, int i)
+static int O_getOwnPropertyNames_walk(js_State *J, js_Object *obj, int i)
 {
-	if (ref->left->level)
-		i = O_getOwnPropertyNames_walk(J, ref->left, i);
-	js_pushliteral(J, ref->name);
-	js_setindex(J, -2, i++);
-	if (ref->right->level)
-		i = O_getOwnPropertyNames_walk(J, ref->right, i);
+	hashtable_foreach(js_Property, ref, obj->properties) {
+		js_pushliteral(J, ref->name);
+		js_setindex(J, -2, i++);
+	}
 	return i;
 }
 
@@ -162,8 +160,8 @@ static void O_getOwnPropertyNames(js_State *J)
 
 	js_newarray(J);
 
-	if (obj->properties->level)
-		i = O_getOwnPropertyNames_walk(J, obj->properties, 0);
+	if (hashtable_count(obj->properties))
+		i = O_getOwnPropertyNames_walk(J, obj, 0);
 	else
 		i = 0;
 
@@ -257,17 +255,15 @@ static void O_defineProperty(js_State *J)
 	js_copy(J, 1);
 }
 
-static void O_defineProperties_walk(js_State *J, js_Property *ref)
+static void O_defineProperties_walk(js_State *J, js_Object *obj)
 {
-	if (ref->left->level)
-		O_defineProperties_walk(J, ref->left);
-	if (!(ref->atts & JS_DONTENUM)) {
-		js_pushvalue(J, ref->value);
-		ToPropertyDescriptor(J, js_toobject(J, 1), ref->name, js_toobject(J, -1));
-		js_pop(J, 1);
+	hashtable_foreach(js_Property, ref, obj->properties) {
+		if (!(ref->atts & JS_DONTENUM)) {
+			js_pushvalue(J, ref->value);
+			ToPropertyDescriptor(J, js_toobject(J, 1), ref->name, js_toobject(J, -1));
+			js_pop(J, 1);
+		}
 	}
-	if (ref->right->level)
-		O_defineProperties_walk(J, ref->right);
 }
 
 static void O_defineProperties(js_State *J)
@@ -278,23 +274,21 @@ static void O_defineProperties(js_State *J)
 	if (!js_isobject(J, 2)) js_typeerror(J, "not an object");
 
 	props = js_toobject(J, 2);
-	if (props->properties->level)
-		O_defineProperties_walk(J, props->properties);
+	if (hashtable_count(props->properties))
+		O_defineProperties_walk(J, props);
 
 	js_copy(J, 1);
 }
 
-static void O_create_walk(js_State *J, js_Object *obj, js_Property *ref)
+static void O_create_walk(js_State *J, js_Object *obj)
 {
-	if (ref->left->level)
-		O_create_walk(J, obj, ref->left);
-	if (!(ref->atts & JS_DONTENUM)) {
-		if (ref->value.type != JS_TOBJECT)
-			js_typeerror(J, "not an object");
-		ToPropertyDescriptor(J, obj, ref->name, ref->value.u.object);
+	hashtable_foreach(js_Property, ref, obj->properties) {
+		if (!(ref->atts & JS_DONTENUM)) {
+			if (ref->value.type != JS_TOBJECT)
+				js_typeerror(J, "not an object");
+			ToPropertyDescriptor(J, obj, ref->name, ref->value.u.object);
+		}
 	}
-	if (ref->right->level)
-		O_create_walk(J, obj, ref->right);
 }
 
 static void O_create(js_State *J)
@@ -317,21 +311,19 @@ static void O_create(js_State *J)
 		if (!js_isobject(J, 2))
 			js_typeerror(J, "not an object");
 		props = js_toobject(J, 2);
-		if (props->properties->level)
-			O_create_walk(J, obj, props->properties);
+		if (hashtable_count(props->properties))
+			O_create_walk(J, obj);
 	}
 }
 
-static int O_keys_walk(js_State *J, js_Property *ref, int i)
+static int O_keys_walk(js_State *J, js_Object *obj, int i)
 {
-	if (ref->left->level)
-		i = O_keys_walk(J, ref->left, i);
-	if (!(ref->atts & JS_DONTENUM)) {
-		js_pushliteral(J, ref->name);
-		js_setindex(J, -2, i++);
+	hashtable_foreach(js_Property, ref, obj->properties) {
+		if (!(ref->atts & JS_DONTENUM)) {
+			js_pushliteral(J, ref->name);
+			js_setindex(J, -2, i++);
+		}
 	}
-	if (ref->right->level)
-		i = O_keys_walk(J, ref->right, i);
 	return i;
 }
 
@@ -347,8 +339,8 @@ static void O_keys(js_State *J)
 
 	js_newarray(J);
 
-	if (obj->properties->level)
-		i = O_keys_walk(J, obj->properties, 0);
+	if (hashtable_count(obj->properties))
+		i = O_keys_walk(J, obj, 0);
 	else
 		i = 0;
 
@@ -376,13 +368,11 @@ static void O_isExtensible(js_State *J)
 	js_pushboolean(J, js_toobject(J, 1)->extensible);
 }
 
-static void O_seal_walk(js_State *J, js_Property *ref)
+static void O_seal_walk(js_State *J, js_Object *obj)
 {
-	if (ref->left->level)
-		O_seal_walk(J, ref->left);
-	ref->atts |= JS_DONTCONF;
-	if (ref->right->level)
-		O_seal_walk(J, ref->right);
+	hashtable_foreach(js_Property, ref, obj->properties) {
+		ref->atts |= JS_DONTCONF;
+	}
 }
 
 static void O_seal(js_State *J)
@@ -395,22 +385,18 @@ static void O_seal(js_State *J)
 	obj = js_toobject(J, 1);
 	obj->extensible = 0;
 
-	if (obj->properties->level)
-		O_seal_walk(J, obj->properties);
+	if (hashtable_count(obj->properties))
+		O_seal_walk(J, obj);
 
 	js_copy(J, 1);
 }
 
-static int O_isSealed_walk(js_State *J, js_Property *ref)
+static int O_isSealed_walk(js_State *J, js_Object *obj)
 {
-	if (ref->left->level)
-		if (!O_isSealed_walk(J, ref->left))
+	hashtable_foreach(js_Property, ref, obj->properties) {
+		if (!(ref->atts & JS_DONTCONF))
 			return 0;
-	if (!(ref->atts & JS_DONTCONF))
-		return 0;
-	if (ref->right->level)
-		if (!O_isSealed_walk(J, ref->right))
-			return 0;
+	}
 	return 1;
 }
 
@@ -427,19 +413,17 @@ static void O_isSealed(js_State *J)
 		return;
 	}
 
-	if (obj->properties->level)
-		js_pushboolean(J, O_isSealed_walk(J, obj->properties));
+	if (hashtable_count(obj->properties))
+		js_pushboolean(J, O_isSealed_walk(J, obj));
 	else
 		js_pushboolean(J, 1);
 }
 
-static void O_freeze_walk(js_State *J, js_Property *ref)
+static void O_freeze_walk(js_State *J, js_Object *obj)
 {
-	if (ref->left->level)
-		O_freeze_walk(J, ref->left);
-	ref->atts |= JS_READONLY | JS_DONTCONF;
-	if (ref->right->level)
-		O_freeze_walk(J, ref->right);
+	hashtable_foreach(js_Property, ref, obj->properties) {
+		ref->atts |= JS_READONLY | JS_DONTCONF;
+	}
 }
 
 static void O_freeze(js_State *J)
@@ -452,24 +436,20 @@ static void O_freeze(js_State *J)
 	obj = js_toobject(J, 1);
 	obj->extensible = 0;
 
-	if (obj->properties->level)
-		O_freeze_walk(J, obj->properties);
+	if (hashtable_count(obj->properties))
+		O_freeze_walk(J, obj);
 
 	js_copy(J, 1);
 }
 
-static int O_isFrozen_walk(js_State *J, js_Property *ref)
+static int O_isFrozen_walk(js_State *J, js_Object *obj)
 {
-	if (ref->left->level)
-		if (!O_isFrozen_walk(J, ref->left))
+	hashtable_foreach(js_Property, ref, obj->properties) {
+		if (!(ref->atts & JS_READONLY))
 			return 0;
-	if (!(ref->atts & JS_READONLY))
-		return 0;
-	if (!(ref->atts & JS_DONTCONF))
-		return 0;
-	if (ref->right->level)
-		if (!O_isFrozen_walk(J, ref->right))
+		if (!(ref->atts & JS_DONTCONF))
 			return 0;
+	}
 	return 1;
 }
 
@@ -482,8 +462,8 @@ static void O_isFrozen(js_State *J)
 
 	obj = js_toobject(J, 1);
 
-	if (obj->properties->level) {
-		if (!O_isFrozen_walk(J, obj->properties)) {
+	if (hashtable_count(obj->properties)) {
+		if (!O_isFrozen_walk(J, obj)) {
 			js_pushboolean(J, 0);
 			return;
 		}

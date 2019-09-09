@@ -22,11 +22,10 @@ static void jsG_freefunction(js_State *J, js_Function *fun)
 	js_free(J, fun);
 }
 
-static void jsG_freeproperty(js_State *J, js_Property *node)
+static void jsG_freeproperty(js_State *J, hashtable_t *properties)
 {
-	if (node->left->level) jsG_freeproperty(J, node->left);
-	if (node->right->level) jsG_freeproperty(J, node->right);
-	js_free(J, node);
+	hashtable_term(properties);
+	js_free(J, properties);
 }
 
 static void jsG_freeiterator(js_State *J, js_Iterator *node)
@@ -40,7 +39,7 @@ static void jsG_freeiterator(js_State *J, js_Iterator *node)
 
 static void jsG_freeobject(js_State *J, js_Object *obj)
 {
-	if (obj->properties->level)
+	if (obj->properties)
 		jsG_freeproperty(J, obj->properties);
 	if (obj->type == JS_CREGEXP) {
 		js_free(J, obj->u.r.source);
@@ -74,9 +73,6 @@ static void jsG_markenvironment(js_State *J, int mark, js_Environment *env)
 
 static void jsG_markproperty(js_State *J, int mark, js_Property *node)
 {
-	if (node->left->level) jsG_markproperty(J, mark, node->left);
-	if (node->right->level) jsG_markproperty(J, mark, node->right);
-
 	if (node->value.type == JS_TMEMSTR) {
 		js_StringNode *strnode = js_tostringnode(node->value.u.string.u.ptr8);
 		if (strnode->level != mark)
@@ -93,8 +89,12 @@ static void jsG_markproperty(js_State *J, int mark, js_Property *node)
 static void jsG_markobject(js_State *J, int mark, js_Object *obj)
 {
 	obj->gcmark = mark;
-	if (obj->properties->level)
-		jsG_markproperty(J, mark, obj->properties);
+	if (obj->properties) {
+		int count = hashtable_count(obj->properties);
+		js_Property* properties = (js_Property*)hashtable_items(obj->properties);
+		for(int i = 0; i < count; ++i)
+			jsG_markproperty(J, mark, properties + i);
+	}
 	if (obj->prototype && obj->prototype->gcmark != mark)
 		jsG_markobject(J, mark, obj->prototype);
 	if (obj->type == JS_CITERATOR)
