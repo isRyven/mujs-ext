@@ -13,3 +13,4 @@
 * Added `js_copyrange` to copy range of values on the stack to the top.
 * Added `js_getprototypeof` to fetch prototype from the specified object.
 * Added `js_callscoped` to call c function in stack isolated environment, similar to js_call, but without intermediate object.
+* Added `js_seal`, `js_freeze`, `js_issealed`, `js_isfrozen` functions to change object extension abilities.
