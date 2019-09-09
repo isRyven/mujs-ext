@@ -249,6 +249,10 @@ void js_loadstringE(js_State *J, const char *filename, const char *source);
 void js_getlocalregistry(js_State *J, int idx, const char *name);
 void js_setlocalregistry(js_State *J, int idx, const char *name);
 void js_dellocalregistry(js_State *J, int idx, const char *name);
+/* object referencing */
+/* push A object, push B object, pops both objects */
+void js_arefb(js_State *J);
+void js_aunrefb(js_State *J);
 
 #ifdef __cplusplus
 }

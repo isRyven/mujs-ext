@@ -890,6 +890,34 @@ int js_hasproperty(js_State *J, int idx, const char *name)
 	return jsR_hasproperty(J, js_toobject(J, idx), name);
 }
 
+void js_arefb(js_State *J)
+{
+	js_Object *B;
+	static char buf[32];
+	if (!js_isobject(J, -2))
+		js_typeerror(J, "A not an object");
+	if (!js_isobject(J, -1))
+		js_typeerror(J, "B not an object");
+	B = js_toobject(J, -1);
+	sprintf(buf, "%p", (void*)B);
+	js_setlocalregistry(J, -2, buf);
+	js_pop(J, 1);
+}
+
+void js_aunrefb(js_State *J)
+{
+	js_Object *B;
+	static char buf[32];
+	if (!js_isobject(J, -2))
+		js_typeerror(J, "A not an object");
+	if (!js_isobject(J, -1))
+		js_typeerror(J, "B not an object");
+	B = js_toobject(J, -1);
+	sprintf(buf, "%p", (void*)B);
+	js_dellocalregistry(J, -2, buf);
+	js_pop(J, 2);
+}
+
 /* Iterator */
 
 void js_pushiterator(js_State *J, int idx, int own)
