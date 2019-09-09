@@ -35,6 +35,7 @@ set(MUJS_C_SRC
 	src/jsrun.c
 	src/jsstate.c
 	src/jsstring.c
+	src/jsutil.c
 	src/jsvalue.c
 	src/regexp.c
 	src/utf.c
@@ -50,7 +51,9 @@ set(MUJS_H_SRC
 	src/jslex.h
 	src/jsparse.h
 	src/jsrun.h
-	src/jsvalue.h)
+	src/jsutil.h
+	src/jsvalue.h
+	src/hashtable.h)
 
 add_library(mujs STATIC ${MUJS_C_SRC} ${MUJS_H_SRC})
 target_link_libraries(mujs m)

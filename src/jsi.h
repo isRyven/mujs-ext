@@ -15,6 +15,7 @@
 #include <inttypes.h>
 
 #include "hashtable.h"
+#include "jsutil.h"
 
 /* Microsoft Visual C */
 #ifdef _MSC_VER
@@ -72,18 +73,6 @@ typedef struct js_StackTrace js_StackTrace;
 #define JS_TRYLIMIT 64		/* exception stack size */
 #define JS_GCLIMIT 10000  	/* run gc cycle every N allocations */
 #define JS_ASTLIMIT 100		/* max nested expressions */
-
-/* Helpers */
-#define S_EITHER_STR(a, b) ((a && a[0]) ? a : b)
-#define M_MIN(a, b) (a < b ? a : b)
-#define M_MAX(a, b) (a > b ? a : b)
-#define M_CLAMP(v, a, b) M_MIN(M_MAX(v, a), b)
-#define M_IN_RANGE(v, x, y) (v >= x && v < y)
-#define M_IN_RANGEX(v, x, y) (v >= x && v <= y)
-#define M_FLT_EPSILON 1.19209290E-07
-#define EITHER(a, b) (a ? a : b) 
-#define BITSET(s, i, val) (s |= val << i)
-#define BITGET(s, i) ((s >> i) & 0x1)
 
 /* instruction size -- change to int if you get integer overflow syntax errors */
 typedef int js_Instruction;
@@ -169,14 +158,6 @@ void *js_savetrypc(js_State *J, js_Instruction *pc);
 
 #define js_trypc(J, PC) \
 	setjmp(js_savetrypc(J, PC))
-
-/* String buffer */
-
-typedef struct js_Buffer { int n, m; char s[64]; } js_Buffer;
-
-void js_putc(js_State *J, js_Buffer **sbp, int c);
-void js_puts(js_State *J, js_Buffer **sb, const char *s);
-void js_putm(js_State *J, js_Buffer **sb, const char *s, const char *e);
 
 /* State struct */
 

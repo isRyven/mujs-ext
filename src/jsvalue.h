@@ -186,7 +186,6 @@ void js_newstringfrom(js_State *J, int idx);
 int jsV_getstrlen(js_State *J, js_Value *v);
 int jsV_getstrsize(js_State *J, js_Value *v);
 
-uint64_t js_tostrhash(const char *str);
 const char* jsV_resolvetypename(js_State *J, js_Value *value, const char* keyName);
 
 #endif

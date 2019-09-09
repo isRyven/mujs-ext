@@ -44,7 +44,7 @@ static void Np_toString(js_State *J)
 		static const char digits[] = "0123456789abcdefghijklmnopqrstuvwxyz";
 		double number = self->u.number;
 		int sign = self->u.number < 0;
-		js_Buffer *sb = NULL;
+		js_StringBuffer *sb = NULL;
 		uint64_t u, limit = ((uint64_t)1<<52);
 
 		int ndigits, exp, point;

@@ -24,3 +24,4 @@
 * Improved property look up performance.
   Should now also save the property order, however, indexes are not handled somehow special.
 * Added `js_resolvetypename` to fetch proper instance type name from the constructor.
+* Added facility to write and read octet buffer.

@@ -7,7 +7,7 @@
 static void jsB_Function(js_State *J)
 {
 	int i, top = js_gettop(J);
-	js_Buffer *sb = NULL;
+	js_StringBuffer *sb = NULL;
 	const char *body;
 	js_Ast *parse;
 	js_Function *fun;
@@ -50,7 +50,7 @@ static void jsB_Function_prototype(js_State *J)
 static void Fp_toString(js_State *J)
 {
 	js_Object *self = js_toobject(J, 0);
-	js_Buffer *sb = NULL;
+	js_StringBuffer *sb = NULL;
 	int i;
 
 	if (!js_iscallable(J, 0))

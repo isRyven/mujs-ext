@@ -156,7 +156,7 @@ static void JSON_parse(js_State *J)
 	}
 }
 
-void fmtnum(js_State *J, js_Buffer **sb, double n)
+void fmtnum(js_State *J, js_StringBuffer **sb, double n)
 {
 	if (isnan(n)) js_puts(J, sb, "null");
 	else if (isinf(n)) js_puts(J, sb, "null");
@@ -167,7 +167,7 @@ void fmtnum(js_State *J, js_Buffer **sb, double n)
 	}
 }
 
-static void fmtstr(js_State *J, js_Buffer **sb, const char *s)
+static void fmtstr(js_State *J, js_StringBuffer **sb, const char *s)
 {
 	static const char *HEX = "0123456789ABCDEF";
 	Rune c;
@@ -197,16 +197,16 @@ static void fmtstr(js_State *J, js_Buffer **sb, const char *s)
 	js_putc(J, sb, '"');
 }
 
-static void fmtindent(js_State *J, js_Buffer **sb, const char *gap, int level)
+static void fmtindent(js_State *J, js_StringBuffer **sb, const char *gap, int level)
 {
 	js_putc(J, sb, '\n');
 	while (level--)
 		js_puts(J, sb, gap);
 }
 
-static int fmtvalue(js_State *J, js_Buffer **sb, const char *key, const char *gap, int level);
+static int fmtvalue(js_State *J, js_StringBuffer **sb, const char *key, const char *gap, int level);
 
-static void fmtobject(js_State *J, js_Buffer **sb, js_Object *obj, const char *gap, int level)
+static void fmtobject(js_State *J, js_StringBuffer **sb, js_Object *obj, const char *gap, int level)
 {
 	const char *key;
 	int save;
@@ -241,7 +241,7 @@ static void fmtobject(js_State *J, js_Buffer **sb, js_Object *obj, const char *g
 	js_putc(J, sb, '}');
 }
 
-static void fmtarray(js_State *J, js_Buffer **sb, const char *gap, int level)
+static void fmtarray(js_State *J, js_StringBuffer **sb, const char *gap, int level)
 {
 	int n, i;
 	char buf[32];
@@ -264,7 +264,7 @@ static void fmtarray(js_State *J, js_Buffer **sb, const char *gap, int level)
 	js_putc(J, sb, ']');
 }
 
-static int fmtvalue(js_State *J, js_Buffer **sb, const char *key, const char *gap, int level)
+static int fmtvalue(js_State *J, js_StringBuffer **sb, const char *key, const char *gap, int level)
 {
 	/* replacer is in 2 */
 	/* holder is in -1 */
@@ -322,7 +322,7 @@ static int fmtvalue(js_State *J, js_Buffer **sb, const char *key, const char *ga
 
 static void JSON_stringify(js_State *J)
 {
-	js_Buffer *sb = NULL;
+	js_StringBuffer *sb = NULL;
 	char buf[12];
 	const char *s, *gap;
 	int n;

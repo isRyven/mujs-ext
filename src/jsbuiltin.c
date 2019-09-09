@@ -99,7 +99,7 @@ static void jsB_isFinite(js_State *J)
 
 static void Encode(js_State *J, const char *str, const char *unescaped)
 {
-	js_Buffer *sb = NULL;
+	js_StringBuffer *sb = NULL;
 
 	static const char *HEX = "0123456789ABCDEF";
 
@@ -127,7 +127,7 @@ static void Encode(js_State *J, const char *str, const char *unescaped)
 
 static void Decode(js_State *J, const char *str, const char *reserved)
 {
-	js_Buffer *sb = NULL;
+	js_StringBuffer *sb = NULL;
 	int a, b;
 
 	if (js_try(J)) {

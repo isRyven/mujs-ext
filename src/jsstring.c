@@ -446,7 +446,7 @@ static void Sp_replace_regexp(js_State *J)
 {
 	js_Regexp *re;
 	const char *source, *s, *r;
-	js_Buffer *sb = NULL;
+	js_StringBuffer *sb = NULL;
 	int n, x;
 	Resub m;
 
@@ -547,7 +547,7 @@ end:
 static void Sp_replace_string(js_State *J)
 {
 	const char *source, *needle, *s, *r;
-	js_Buffer *sb = NULL;
+	js_StringBuffer *sb = NULL;
 	int n;
 
 	source = checkstring(J, 0);
