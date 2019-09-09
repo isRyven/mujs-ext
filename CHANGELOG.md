@@ -30,3 +30,5 @@
   Script function is pushed on the stack on success.
 * Added `js_loadbinfile`, `js_ploadbinfile` functions to load precompiled scirpt binary from the file. 
 * Added `-c` and `-f` flags to mujs executable, which can be used to precompile and load scripts.
+* Added `JSCOMPILER` and `JSONPARSER` cmake definitions to exclude js compiler from the compiled binary.
+  Use `-DJSCOMPILER=0` to disable js compiler. Results in smaller binary.

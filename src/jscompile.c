@@ -4,6 +4,8 @@
 #include "jscompile.h"
 #include "jsvalue.h" /* for jsV_numbertostring */
 
+#ifndef JS_COMPILER_DISABLED
+
 #define cexp jsC_cexp /* collision with math.h */
 
 #define JF js_State *J, js_Function *F
@@ -1443,3 +1445,19 @@ js_Function *jsC_compilescript(js_State *J, js_Ast *prog, int default_strict)
 {
 	return newfun(J, prog ? prog->line : 0, NULL, NULL, prog, 1, default_strict);
 }
+
+#else
+
+js_Function *jsC_compilefunction(js_State *J, js_Ast *prog)
+{
+	js_error(J, "function compilation is disabled");
+	return NULL;
+}
+
+js_Function *jsC_compilescript(js_State *J, js_Ast *prog, int default_strict)
+{
+	js_error(J, "script compilation is disabled");
+	return NULL;
+}
+
+#endif

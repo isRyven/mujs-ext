@@ -2,6 +2,8 @@
 #include "jslex.h"
 #include "jsparse.h"
 
+#ifndef JS_COMPILER_DISABLED
+
 #define LIST(h)			jsP_newnode(J, AST_LIST, 0, h, 0, 0, 0)
 
 #define EXP0(x)			jsP_newnode(J, EXP_ ## x, line, 0, 0, 0, 0)
@@ -1065,3 +1067,22 @@ js_Ast *jsP_parsefunction(js_State *J, const char *filename, const char *params,
 	}
 	return EXP3(FUN, NULL, p, jsP_parse(J, filename, body));
 }
+
+#else
+
+void jsP_freeparse(js_State *J)
+{
+	J->gcast = NULL;
+}
+
+js_Ast *jsP_parse(js_State *J, const char *filename, const char *source)
+{
+	return NULL;
+}
+
+js_Ast *jsP_parsefunction(js_State *J, const char *filename, const char *params, const char *body)
+{
+	return NULL;
+}
+
+#endif

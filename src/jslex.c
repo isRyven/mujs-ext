@@ -2,6 +2,40 @@
 #include "jslex.h"
 #include "utf.h"
 
+#ifndef isalpha
+#define isalpha(c) ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'))
+#endif
+#ifndef isdigit
+#define isdigit(c) (c >= '0' && c <= '9')
+#endif
+#ifndef ishex
+#define ishex(c) ((c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))
+#endif
+
+int jsY_iswhite(int c)
+{
+	return c == 0x9 || c == 0xB || c == 0xC || c == 0x20 || c == 0xA0 || c == 0xFEFF;
+}
+
+int jsY_isnewline(int c)
+{
+	return c == 0xA || c == 0xD || c == 0x2028 || c == 0x2029;
+}
+int jsY_ishex(int c)
+{
+	return isdigit(c) || ishex(c);
+}
+
+int jsY_tohex(int c)
+{
+	if (c >= '0' && c <= '9') return c - '0';
+	if (c >= 'a' && c <= 'f') return c - 'a' + 0xA;
+	if (c >= 'A' && c <= 'F') return c - 'A' + 0xA;
+	return 0;
+}
+
+#ifndef JSON_PARSER_DISABLED
+
 JS_NORETURN static void jsY_error(js_State *J, const char *fmt, ...) JS_PRINTFLIKE(2,3);
 
 static void jsY_error(js_State *J, const char *fmt, ...)
@@ -107,26 +141,6 @@ static int jsY_findkeyword(js_State *J, const char *s)
 	return TK_IDENTIFIER;
 }
 
-int jsY_iswhite(int c)
-{
-	return c == 0x9 || c == 0xB || c == 0xC || c == 0x20 || c == 0xA0 || c == 0xFEFF;
-}
-
-int jsY_isnewline(int c)
-{
-	return c == 0xA || c == 0xD || c == 0x2028 || c == 0x2029;
-}
-
-#ifndef isalpha
-#define isalpha(c) ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'))
-#endif
-#ifndef isdigit
-#define isdigit(c) (c >= '0' && c <= '9')
-#endif
-#ifndef ishex
-#define ishex(c) ((c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))
-#endif
-
 static int jsY_isidentifierstart(int c)
 {
 	return isalpha(c) || c == '$' || c == '_' || isalpharune(c);
@@ -140,19 +154,6 @@ static int jsY_isidentifierpart(int c)
 static int jsY_isdec(int c)
 {
 	return isdigit(c);
-}
-
-int jsY_ishex(int c)
-{
-	return isdigit(c) || ishex(c);
-}
-
-int jsY_tohex(int c)
-{
-	if (c >= '0' && c <= '9') return c - '0';
-	if (c >= 'a' && c <= 'f') return c - 'a' + 0xA;
-	if (c >= 'A' && c <= 'F') return c - 'A' + 0xA;
-	return 0;
 }
 
 static void jsY_next(js_State *J)
@@ -866,3 +867,32 @@ int jsY_lexjson(js_State *J)
 		jsY_error(J, "unexpected character: \\u%04X", J->lexchar);
 	}
 }
+
+#else
+
+const char *jsY_tokenstring(int token)
+{
+	return "<unknown>";
+}
+
+int jsY_findword(const char *s, const char **list, int num)
+{
+	return -1;
+}
+
+void jsY_initlex(js_State *J, const char *filename, const char *source)
+{
+	js_error(J, "lexer is disabled");
+}
+
+int jsY_lex(js_State *J)
+{
+	return 0;
+}
+
+int jsY_lexjson(js_State *J)
+{
+	return 0;
+}
+
+#endif

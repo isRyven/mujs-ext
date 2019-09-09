@@ -229,6 +229,7 @@ static void jsB_repr(js_State *J)
 	js_repr(J, 1);
 }
 
+#ifndef JS_COMPILER_DISABLED
 static const char *require_js =
 	"function require(name) {\n"
 	"var cache = require.cache;\n"
@@ -247,6 +248,7 @@ static const char *stacktrace_js =
 	"return this.name + ': ' + this.message;\n"
 	"};\n"
 ;
+#endif
 
 static int eval_print(js_State *J, const char *source)
 {
@@ -360,10 +362,10 @@ int main(int argc, char **argv)
 
 	js_newcfunction(J, jsB_quit, "quit", 1);
 	js_setglobal(J, "quit");
-
+#ifndef JS_COMPILER_DISABLED
 	js_dostring(J, require_js);
 	js_dostring(J, stacktrace_js);
-
+#endif
 	if (xoptind == argc) {
 		interactive = 1;
 	} else {
