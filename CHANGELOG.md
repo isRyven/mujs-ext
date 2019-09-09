@@ -12,3 +12,4 @@
 * Added `js_rotnpop` to rotate and pop `n` values.
 * Added `js_copyrange` to copy range of values on the stack to the top.
 * Added `js_getprototypeof` to fetch prototype from the specified object.
+* Added `js_callscoped` to call c function in stack isolated environment, similar to js_call, but without intermediate object.

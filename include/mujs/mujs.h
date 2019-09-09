@@ -229,6 +229,9 @@ int js_setbot(js_State *J, int n);
 void js_rotnpop(js_State *J, int rot);
 void js_copyrange(js_State *J, int from, int to);
 void js_getprototypeof(js_State *J, int n);
+typedef void (*js_CFunctionScoped)(js_State *J, void *data);
+void js_callscoped(js_State *J, js_CFunctionScoped cfun, void *data, int length);
+void js_callscoped2(js_State *J, js_CFunction cfun, int length);
 
 #ifdef __cplusplus
 }

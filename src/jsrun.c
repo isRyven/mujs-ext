@@ -1203,6 +1203,46 @@ int js_pcall(js_State *J, int n)
 	return 0;
 }
 
+typedef struct { int current; } js_LocalScope;
+
+void js_createlocalscope(js_State *J, js_LocalScope *scope, int offset)
+{
+    int bot = BOT;
+    int newBot = TOP - offset;
+    scope->current = bot;
+    if (newBot > TOP)
+        js_error(J, "stack underflow!");
+    BOT = newBot;
+}
+
+void js_destroylocalscope(js_State *J, js_LocalScope *scope)
+{
+    BOT = scope->current;
+    if (BOT > TOP)
+    {
+        BOT = TOP;
+        js_error(J, "stack underflow!");
+    }
+}
+
+void js_callscoped(js_State *J, js_CFunctionScoped cfun, void *data, int length)
+{
+    js_LocalScope scope;
+    js_createlocalscope(J, &scope, length + 1);
+    cfun(J, data);
+    js_rotnpop(J, length + 2);
+    js_destroylocalscope(J, &scope);
+}
+
+void js_callscoped2(js_State *J, js_CFunction cfun, int length)
+{
+    js_LocalScope scope;
+    js_createlocalscope(J, &scope, length + 1);
+    cfun(J);
+    js_rotnpop(J, length + 2);
+    js_destroylocalscope(J, &scope);
+}
+
 /* Exceptions */
 
 void *js_savetrypc(js_State *J, js_Instruction *pc)
