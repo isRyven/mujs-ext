@@ -12,6 +12,7 @@
 #include <math.h>
 #include <float.h>
 #include <limits.h>
+#include <inttypes.h>
 
 /* Microsoft Visual C */
 #ifdef _MSC_VER
@@ -70,6 +71,18 @@ typedef struct js_StackTrace js_StackTrace;
 #define JS_GCLIMIT 10000  	/* run gc cycle every N allocations */
 #define JS_ASTLIMIT 100		/* max nested expressions */
 
+/* Helpers */
+#define S_EITHER_STR(a, b) ((a && a[0]) ? a : b)
+#define M_MIN(a, b) (a < b ? a : b)
+#define M_MAX(a, b) (a > b ? a : b)
+#define M_CLAMP(v, a, b) M_MIN(M_MAX(v, a), b)
+#define M_IN_RANGE(v, x, y) (v >= x && v < y)
+#define M_IN_RANGEX(v, x, y) (v >= x && v <= y)
+#define M_FLT_EPSILON 1.19209290E-07
+#define EITHER(a, b) (a ? a : b) 
+#define BITSET(s, i, val) (s |= val << i)
+#define BITGET(s, i) ((s >> i) & 0x1)
+
 /* instruction size -- change to int if you get integer overflow syntax errors */
 typedef int js_Instruction;
 
@@ -79,6 +92,23 @@ char *js_strdup(js_State *J, const char *s);
 const char *js_intern(js_State *J, const char *s);
 void jsS_dumpstrings(js_State *J);
 void jsS_freestrings(js_State *J);
+
+struct js_StringNode
+{
+	js_StringNode *left, *right;
+	int level;
+	unsigned int length;
+	unsigned int size;
+	int isunicode;
+	char string[1];
+};
+
+#define js_tostringnode(ptr) ((js_StringNode*)(ptr - soffsetof(js_StringNode, string)))
+
+/* parser interned string literals */
+void js_pushliteral(js_State *J, const char *v);
+/* puts short string on stack */
+void js_pushshrstr(js_State *J, const char *v, int len);
 
 /* Portable strtod and printf float formatting */
 
@@ -218,7 +248,7 @@ struct js_State
 	js_Environment *gcenv;
 	js_Function *gcfun;
 	js_Object *gcobj;
-	js_String *gcstr;
+	js_StringNode *gcstr;
 
 	/* environments on the call stack but currently not in scope */
 	int envtop;

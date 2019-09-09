@@ -20,3 +20,4 @@
   Useful for userdatas, as an alternative to `js_ref`.
 * Added `js_arefb`, `js_aunrefb` convenience facility to internally create one-way reference between objects.  
   This prevents garbage collection of referenced object, until its parent is collected.
+* Increased ASCII strings performance.

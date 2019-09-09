@@ -256,6 +256,7 @@ js_Object *jsV_newiterator(js_State *J, js_Object *obj, int own)
 {
 	char buf[32];
 	int k;
+	js_StringNode *node;
 	js_Object *io = jsV_newobject(J, JS_CITERATOR, NULL);
 	io->u.iter.target = obj;
 	if (own) {
@@ -267,10 +268,11 @@ js_Object *jsV_newiterator(js_State *J, js_Object *obj, int own)
 	}
 	if (obj->type == JS_CSTRING) {
 		js_Iterator *tail = io->u.iter.head;
+		node = js_tostringnode(obj->u.s.u.ptr8);
 		if (tail)
 			while (tail->next)
 				tail = tail->next;
-		for (k = 0; k < obj->u.s.length; ++k) {
+		for (k = 0; k < (int)node->length; ++k) {
 			js_itoa(buf, k);
 			if (!jsV_getenumproperty(J, obj, buf)) {
 				js_Iterator *node = js_malloc(J, sizeof *node);
@@ -291,6 +293,7 @@ js_Object *jsV_newiterator(js_State *J, js_Object *obj, int own)
 const char *jsV_nextiterator(js_State *J, js_Object *io)
 {
 	int k;
+	js_StringNode *node;
 	if (io->type != JS_CITERATOR)
 		js_typeerror(J, "not an iterator");
 	while (io->u.iter.head) {
@@ -300,9 +303,11 @@ const char *jsV_nextiterator(js_State *J, js_Object *io)
 		io->u.iter.head = next;
 		if (jsV_getproperty(J, io->u.iter.target, name))
 			return name;
-		if (io->u.iter.target->type == JS_CSTRING)
-			if (js_isarrayindex(J, name, &k) && k < io->u.iter.target->u.s.length)
+		if (io->u.iter.target->type == JS_CSTRING) {
+			node = js_tostringnode(io->u.iter.target->u.s.u.ptr8);
+			if (js_isarrayindex(J, name, &k) && k < (int)node->length)
 				return name;
+		}
 	}
 	return NULL;
 }

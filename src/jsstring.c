@@ -65,7 +65,7 @@ int js_utfptrtoidx(const char *s, const char *p)
 
 static void jsB_new_String(js_State *J)
 {
-	js_newstring(J, js_gettop(J) > 1 ? js_tostring(J, 1) : "");
+	js_newstringfrom(J, 1);
 }
 
 static void jsB_String(js_State *J)
@@ -77,14 +77,14 @@ static void Sp_toString(js_State *J)
 {
 	js_Object *self = js_toobject(J, 0);
 	if (self->type != JS_CSTRING) js_typeerror(J, "not a string");
-	js_pushliteral(J, self->u.s.string);
+	js_pushliteral(J, self->u.s.u.ptr8);
 }
 
 static void Sp_valueOf(js_State *J)
 {
 	js_Object *self = js_toobject(J, 0);
 	if (self->type != JS_CSTRING) js_typeerror(J, "not a string");
-	js_pushliteral(J, self->u.s.string);
+	js_pushliteral(J, self->u.s.u.ptr8);
 }
 
 static void Sp_charAt(js_State *J)
@@ -92,12 +92,23 @@ static void Sp_charAt(js_State *J)
 	char buf[UTFmax + 1];
 	const char *s = checkstring(J, 0);
 	int pos = js_tointeger(J, 1);
-	Rune rune = js_runeat(J, s, pos);
-	if (rune > 0) {
-		buf[runetochar(buf, &rune)] = 0;
-		js_pushstring(J, buf);
+	js_Object *obj = js_toobject(J, 0);
+	js_StringNode *strnode = js_tostringnode(obj->u.s.u.ptr8);
+	if (pos >= (int)strnode->length)
+	{
+		js_pushconst(J, "");
+		return;
+	}
+	if (obj->u.s.isunicode) {
+		Rune rune = js_runeat(J, s, pos);
+		if (rune > 0) {
+			buf[runetochar(buf, &rune)] = 0;
+			js_pushstringu(J, buf, 1);
+		} else {
+			js_pushconst(J, "");
+		}
 	} else {
-		js_pushliteral(J, "");
+		js_pushshrstr(J, obj->u.s.u.ptr8 + pos, 1);
 	}
 }
 
@@ -105,11 +116,22 @@ static void Sp_charCodeAt(js_State *J)
 {
 	const char *s = checkstring(J, 0);
 	int pos = js_tointeger(J, 1);
-	Rune rune = js_runeat(J, s, pos);
-	if (rune > 0)
-		js_pushnumber(J, rune);
-	else
+	js_Object *obj = js_toobject(J, 0);
+	js_StringNode *strnode = js_tostringnode(obj->u.s.u.ptr8);
+	if (pos >= (int)strnode->length)
+	{
 		js_pushnumber(J, NAN);
+		return;
+	}
+	if (obj->u.s.isunicode) {
+		Rune rune = js_runeat(J, s, pos);
+		if (rune > 0)
+			js_pushnumber(J, rune);
+		else
+			js_pushnumber(J, NAN);
+	} else {
+		js_pushnumber(J, (double)*(obj->u.s.u.ptr8 + pos));
+	}
 }
 
 static void Sp_concat(js_State *J)
@@ -191,7 +213,7 @@ static void Sp_slice(js_State *J)
 {
 	const char *str = checkstring(J, 0);
 	const char *ss, *ee;
-	int len = utflen(str);
+	int len = js_getstrlen(J, 0);
 	int s = js_tointeger(J, 1);
 	int e = js_isdefined(J, 2) ? js_tointeger(J, 2) : len;
 
@@ -216,7 +238,7 @@ static void Sp_substring(js_State *J)
 {
 	const char *str = checkstring(J, 0);
 	const char *ss, *ee;
-	int len = utflen(str);
+	int len = js_getstrlen(J, 0);
 	int s = js_tointeger(J, 1);
 	int e = js_isdefined(J, 2) ? js_tointeger(J, 2) : len;
 
@@ -239,7 +261,7 @@ static void Sp_substr(js_State *J)
 {
 	const char *str = checkstring(J, 0);
 	const char *ss, *ee;
-	int len = utflen(str);
+	int len = js_getstrlen(J, 0);
 	int e = 0;
 	int s = js_tointeger(J, 1);
 	int l = js_isdefined(J, 2) ? js_tointeger(J, 2) : len;
@@ -612,7 +634,7 @@ static void Sp_split_regexp(js_State *J)
 	if (e == text) {
 		if (js_doregexec(J, re->prog, text, &m, 0)) {
 			if (len == limit) return;
-			js_pushliteral(J, "");
+			js_pushconst(J, "");
 			js_setindex(J, -2, 0);
 		}
 		return;
@@ -702,8 +724,8 @@ static void Sp_split(js_State *J)
 
 void jsB_initstring(js_State *J)
 {
-	J->String_prototype->u.s.string = "";
-	J->String_prototype->u.s.length = 0;
+	J->String_prototype->u.s.u.ptr8 = "";
+	J->String_prototype->u.s.isunicode = 0;
 
 	js_pushobject(J, J->String_prototype);
 	{

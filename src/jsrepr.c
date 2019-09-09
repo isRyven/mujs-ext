@@ -183,7 +183,7 @@ static void reprvalue(js_State *J, js_Buffer **sb)
 			break;
 		case JS_CSTRING:
 			js_puts(J, sb, "(new String(");
-			reprstr(J, sb, obj->u.s.string);
+			reprstr(J, sb, obj->u.s.u.ptr8);
 			js_puts(J, sb, "))");
 			break;
 		case JS_CREGEXP:

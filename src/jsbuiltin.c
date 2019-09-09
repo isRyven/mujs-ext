@@ -26,7 +26,7 @@ void jsB_propn(js_State *J, const char *name, double number)
 
 void jsB_props(js_State *J, const char *name, const char *string)
 {
-	js_pushliteral(J, string);
+	js_pushconst(J, string);
 	js_defproperty(J, -2, name, JS_DONTENUM);
 }
 

@@ -1,4 +1,5 @@
 #include "jsi.h"
+#include "utf.h"
 
 /* Dynamically grown string buffer */
 
@@ -31,21 +32,18 @@ void js_putm(js_State *J, js_Buffer **sb, const char *s, const char *e)
 
 /* Use an AA-tree to quickly look up interned strings. */
 
-struct js_StringNode
-{
-	js_StringNode *left, *right;
-	int level;
-	char string[1];
-};
-
-static js_StringNode jsS_sentinel = { &jsS_sentinel, &jsS_sentinel, 0, ""};
+static js_StringNode jsS_sentinel = { &jsS_sentinel, &jsS_sentinel, 0, 0, 0, 0, ""};
 
 static js_StringNode *jsS_newstringnode(js_State *J, const char *string, const char **result)
 {
-	int n = strlen(string);
+	unsigned int n = 0;
+	unsigned int len = utflen2(string, &n);
 	js_StringNode *node = js_malloc(J, soffsetof(js_StringNode, string) + n + 1);
 	node->left = node->right = &jsS_sentinel;
 	node->level = 1;
+	node->size = n;
+	node->length = len;
+	node->isunicode = n != len;
 	memcpy(node->string, string, n + 1);
 	return *result = node->string, node;
 }

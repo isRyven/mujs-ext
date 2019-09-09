@@ -29,6 +29,8 @@ int	chartorune(Rune *rune, const char *str);
 int	runetochar(char *str, const Rune *rune);
 int	runelen(int c);
 int	utflen(const char *s);
+int utflen2(const char *s, unsigned int *size);
+int utfnlen2(const char *s, unsigned int maxlen, unsigned int *size);
 
 int		isalpharune(Rune c);
 int		islowerrune(Rune c);

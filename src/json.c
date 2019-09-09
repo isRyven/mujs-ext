@@ -297,7 +297,7 @@ static int fmtvalue(js_State *J, js_Buffer **sb, const char *key, const char *ga
 		js_Object *obj = js_toobject(J, -1);
 		switch (obj->type) {
 		case JS_CNUMBER: fmtnum(J, sb, obj->u.number); break;
-		case JS_CSTRING: fmtstr(J, sb, obj->u.s.string); break;
+		case JS_CSTRING: fmtstr(J, sb, obj->u.s.u.ptr8); break;
 		case JS_CBOOLEAN: js_puts(J, sb, obj->u.boolean ? "true" : "false"); break;
 		case JS_CARRAY: fmtarray(J, sb, gap, level); break;
 		default: fmtobject(J, sb, obj, gap, level); break;

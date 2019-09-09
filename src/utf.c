@@ -42,8 +42,7 @@ enum
 	Bad	= Runeerror,
 };
 
-int
-chartorune(Rune *rune, const char *str)
+int chartorune(Rune *rune, const char *str)
 {
 	int c, c1, c2;
 	int l;
@@ -98,8 +97,7 @@ bad:
 	return 1;
 }
 
-int
-runetochar(char *str, const Rune *rune)
+int runetochar(char *str, const Rune *rune)
 {
 	int c;
 
@@ -133,8 +131,7 @@ runetochar(char *str, const Rune *rune)
 	return 3;
 }
 
-int
-runelen(int c)
+int runelen(int c)
 {
 	Rune rune;
 	char str[10];
@@ -143,13 +140,11 @@ runelen(int c)
 	return runetochar(str, &rune);
 }
 
-int
-utflen(const char *s)
+int utflen(const char *s)
 {
-	int c;
-	int n;
+	int c, n;
 	Rune rune;
-
+	
 	n = 0;
 	for(;;) {
 		c = *(uchar*)s;
@@ -161,4 +156,29 @@ utflen(const char *s)
 			s += chartorune(&rune, s);
 		n++;
 	}
+}
+
+int utflen2(const char *s, unsigned int *size)
+{
+	return utfnlen2(s, 0x7fffffff, size);
+}
+
+int utfnlen2(const char *s, unsigned int maxlen, unsigned int *size)
+{
+	int c, n; 
+	Rune rune;
+	const char *ptr = s;
+	for(n = 0; (ptr - s) < maxlen;) {
+		c = *(uchar*)ptr;
+		if(c < Runeself) {
+			if(c == 0)
+				break;
+			ptr++;
+		} else {
+			ptr += chartorune(&rune, ptr);
+		}
+		++n;
+	}
+	*size += (ptr - s);
+	return n;
 }

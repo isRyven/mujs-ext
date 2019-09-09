@@ -77,8 +77,11 @@ static void jsG_markproperty(js_State *J, int mark, js_Property *node)
 	if (node->left->level) jsG_markproperty(J, mark, node->left);
 	if (node->right->level) jsG_markproperty(J, mark, node->right);
 
-	if (node->value.type == JS_TMEMSTR && node->value.u.memstr->gcmark != mark)
-		node->value.u.memstr->gcmark = mark;
+	if (node->value.type == JS_TMEMSTR) {
+		js_StringNode *strnode = js_tostringnode(node->value.u.string.u.ptr8);
+		if (strnode->level != mark)
+			strnode->level = mark;
+	}
 	if (node->value.type == JS_TOBJECT && node->value.u.object->gcmark != mark)
 		jsG_markobject(J, mark, node->value.u.object);
 	if (node->getter && node->getter->gcmark != mark)
@@ -111,8 +114,11 @@ static void jsG_markstack(js_State *J, int mark)
 	js_Value *v = J->stack;
 	int n = J->top;
 	while (n--) {
-		if (v->type == JS_TMEMSTR && v->u.memstr->gcmark != mark)
-			v->u.memstr->gcmark = mark;
+		if (v->type == JS_TMEMSTR) {
+			js_StringNode *strnode = js_tostringnode(v->u.string.u.ptr8);
+			if (strnode->level != mark)
+				strnode->level = mark;
+		}
 		if (v->type == JS_TOBJECT && v->u.object->gcmark != mark)
 			jsG_markobject(J, mark, v->u.object);
 		++v;
@@ -123,7 +129,7 @@ void js_gc(js_State *J, int report)
 {
 	js_Function *fun, *nextfun, **prevnextfun;
 	js_Object *obj, *nextobj, **prevnextobj;
-	js_String *str, *nextstr, **prevnextstr;
+	js_StringNode *str, *nextstr, **prevnextstr;
 	js_Environment *env, *nextenv, **prevnextenv;
 	int nenv = 0, nfun = 0, nobj = 0, nstr = 0;
 	int genv = 0, gfun = 0, gobj = 0, gstr = 0;
@@ -208,13 +214,13 @@ void js_gc(js_State *J, int report)
 
 	prevnextstr = &J->gcstr;
 	for (str = J->gcstr; str; str = nextstr) {
-		nextstr = str->gcnext;
-		if (str->gcmark != mark) {
+		nextstr = str->right;
+		if (str->level != mark) {
 			*prevnextstr = nextstr;
 			js_free(J, str);
 			++gstr;
 		} else {
-			prevnextstr = &str->gcnext;
+			prevnextstr = &str->right;
 		}
 		++nstr;
 	}
@@ -232,7 +238,7 @@ void js_freestate(js_State *J)
 	js_Function *fun, *nextfun;
 	js_Object *obj, *nextobj;
 	js_Environment *env, *nextenv;
-	js_String *str, *nextstr;
+	js_StringNode *str, *nextstr;
 
 	if (!J)
 		return;
@@ -244,7 +250,7 @@ void js_freestate(js_State *J)
 	for (obj = J->gcobj; obj; obj = nextobj)
 		nextobj = obj->gcnext, jsG_freeobject(J, obj);
 	for (str = J->gcstr; str; str = nextstr)
-		nextstr = str->gcnext, js_free(J, str);
+		nextstr = str->right, js_free(J, str);
 
 	jsS_freestrings(J);
 

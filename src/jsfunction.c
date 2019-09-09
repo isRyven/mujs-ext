@@ -92,7 +92,7 @@ static void Fp_toString(js_State *J)
 		js_endtry(J);
 		js_free(J, sb);
 	} else {
-		js_pushliteral(J, "function () { }");
+		js_pushconst(J, "function () { }");
 	}
 }
 

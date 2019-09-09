@@ -4,8 +4,8 @@
 #include "jsvalue.h"
 #include "utf.h"
 
-#define JSV_ISSTRING(v) (v->type==JS_TSHRSTR || v->type==JS_TMEMSTR || v->type==JS_TLITSTR)
-#define JSV_TOSTRING(v) (v->type==JS_TSHRSTR ? v->u.shrstr : v->type==JS_TLITSTR ? v->u.litstr : v->type==JS_TMEMSTR ? v->u.memstr->p : "")
+#define JSV_ISSTRING(v) (v->type==JS_TSHRSTR || v->type==JS_TMEMSTR || v->type==JS_TLITSTR || v->type==JS_TCONSTSTR)
+#define JSV_TOSTRING(v) (v->type==JS_TSHRSTR ? v->u.string.u.shrstr : (v->type==JS_TLITSTR || v->type==JS_TMEMSTR || v->type==JS_TCONSTSTR) ? v->u.string.u.ptr8 : "")
 
 int jsV_numbertointeger(double n)
 {
@@ -112,8 +112,8 @@ void jsV_toprimitive(js_State *J, js_Value *v, int preferred)
 	if (J->strict)
 		js_typeerror(J, "cannot convert object to primitive");
 
-	v->type = JS_TLITSTR;
-	v->u.litstr = "[object]";
+	v->type = JS_TCONSTSTR;
+	v->u.string.u.ptr8 = "[object]";
 	return;
 }
 
@@ -122,13 +122,14 @@ int jsV_toboolean(js_State *J, js_Value *v)
 {
 	switch (v->type) {
 	default:
-	case JS_TSHRSTR: return v->u.shrstr[0] != 0;
+	case JS_TSHRSTR: return v->u.string.u.shrstr[0] != 0;
 	case JS_TUNDEFINED: return 0;
 	case JS_TNULL: return 0;
 	case JS_TBOOLEAN: return v->u.boolean;
 	case JS_TNUMBER: return v->u.number != 0 && !isnan(v->u.number);
-	case JS_TLITSTR: return v->u.litstr[0] != 0;
-	case JS_TMEMSTR: return v->u.memstr->p[0] != 0;
+	case JS_TLITSTR:
+	case JS_TCONSTSTR:
+	case JS_TMEMSTR: return v->u.string.u.ptr8[0] != 0;
 	case JS_TOBJECT: return 1;
 	}
 }
@@ -210,13 +211,14 @@ double jsV_tonumber(js_State *J, js_Value *v)
 {
 	switch (v->type) {
 	default:
-	case JS_TSHRSTR: return jsV_stringtonumber(J, v->u.shrstr);
+	case JS_TSHRSTR: return jsV_stringtonumber(J, v->u.string.u.shrstr);
 	case JS_TUNDEFINED: return NAN;
 	case JS_TNULL: return 0;
 	case JS_TBOOLEAN: return v->u.boolean;
 	case JS_TNUMBER: return v->u.number;
-	case JS_TLITSTR: return jsV_stringtonumber(J, v->u.litstr);
-	case JS_TMEMSTR: return jsV_stringtonumber(J, v->u.memstr->p);
+	case JS_TLITSTR:
+	case JS_TCONSTSTR:
+	case JS_TMEMSTR: return jsV_stringtonumber(J, v->u.string.u.ptr8);
 	case JS_TOBJECT:
 		jsV_toprimitive(J, v, JS_HNUMBER);
 		return jsV_tonumber(J, v);
@@ -295,26 +297,29 @@ const char *jsV_tostring(js_State *J, js_Value *v)
 	const char *p;
 	switch (v->type) {
 	default:
-	case JS_TSHRSTR: return v->u.shrstr;
+	case JS_TSHRSTR: return v->u.string.u.shrstr;
 	case JS_TUNDEFINED: return "undefined";
 	case JS_TNULL: return "null";
 	case JS_TBOOLEAN: return v->u.boolean ? "true" : "false";
-	case JS_TLITSTR: return v->u.litstr;
-	case JS_TMEMSTR: return v->u.memstr->p;
+	case JS_TLITSTR:
+	case JS_TCONSTSTR:
+	case JS_TMEMSTR: return v->u.string.u.ptr8;
 	case JS_TNUMBER:
 		p = jsV_numbertostring(J, buf, v->u.number);
 		if (p == buf) {
 			int n = strlen(p);
 			if (n <= soffsetof(js_Value, type)) {
-				char *s = v->u.shrstr;
+				char *s = v->u.string.u.shrstr;
 				while (n--) *s++ = *p++;
 				*s = 0;
 				v->type = JS_TSHRSTR;
-				return v->u.shrstr;
+				return v->u.string.u.shrstr;
 			} else {
+				js_StringNode *node = jsV_newmemstring(J, p, n);
 				v->type = JS_TMEMSTR;
-				v->u.memstr = jsV_newmemstring(J, p, n);
-				return v->u.memstr->p;
+				v->u.string.u.ptr8 = node->string;
+				v->u.string.isunicode = 0;
+				return node->string;
 			}
 		}
 		return p;
@@ -342,9 +347,40 @@ static js_Object *jsV_newnumber(js_State *J, double v)
 
 static js_Object *jsV_newstring(js_State *J, const char *v)
 {
+	js_StringNode *strnode;
 	js_Object *obj = jsV_newobject(J, JS_CSTRING, J->String_prototype);
-	obj->u.s.string = js_intern(J, v); /* TODO: js_String */
-	obj->u.s.length = utflen(v);
+	strnode = js_tostringnode(js_intern(J, v));
+	obj->u.s.u.ptr8 = strnode->string;
+	obj->u.s.isunicode = strnode->isunicode;
+	return obj;
+}
+
+// create new string object from meta value
+static js_Object *jsV_newstringfrom(js_State *J, js_Value *v)
+{
+	js_StringNode *strnode;
+	js_Object *obj = jsV_newobject(J, JS_CSTRING, J->String_prototype);
+	switch (v->type) {
+		case JS_TSHRSTR:
+			obj->u.s.u.ptr8 = js_intern(J, v->u.string.u.shrstr);
+			obj->u.s.isunicode = 0;
+			break;
+		// already interned string
+		case JS_TLITSTR:
+			obj->u.s.u.ptr8 = v->u.string.u.ptr8;
+			obj->u.s.isunicode = v->u.string.isunicode;
+			break;
+		case JS_TCONSTSTR:
+		case JS_TMEMSTR:
+			strnode = js_tostringnode(js_intern(J, v->u.string.u.ptr8));
+			obj->u.s.u.ptr8 = strnode->string;
+			obj->u.s.isunicode = strnode->isunicode;
+			break;
+		default:
+			obj->u.s.u.ptr8 = js_intern(J, jsV_tostring(J, v));
+			obj->u.s.isunicode = 0;
+			break;
+	}
 	return obj;
 }
 
@@ -353,13 +389,14 @@ js_Object *jsV_toobject(js_State *J, js_Value *v)
 {
 	switch (v->type) {
 	default:
-	case JS_TSHRSTR: return jsV_newstring(J, v->u.shrstr);
+	case JS_TSHRSTR: return jsV_newstring(J, v->u.string.u.shrstr);
 	case JS_TUNDEFINED: js_typeerror(J, "cannot convert undefined to object");
 	case JS_TNULL: js_typeerror(J, "cannot convert null to object");
 	case JS_TBOOLEAN: return jsV_newboolean(J, v->u.boolean);
 	case JS_TNUMBER: return jsV_newnumber(J, v->u.number);
-	case JS_TLITSTR: return jsV_newstring(J, v->u.litstr);
-	case JS_TMEMSTR: return jsV_newstring(J, v->u.memstr->p);
+	case JS_TLITSTR:
+	case JS_TCONSTSTR:
+	case JS_TMEMSTR: return jsV_newstringfrom(J, v);
 	case JS_TOBJECT: return v->u.object;
 	}
 }
@@ -401,6 +438,14 @@ void js_newnumber(js_State *J, double v)
 void js_newstring(js_State *J, const char *v)
 {
 	js_pushobject(J, jsV_newstring(J, v));
+}
+
+void js_newstringfrom(js_State *J, int idx)
+{
+	if (js_isdefined(J, idx))
+		js_pushobject(J, jsV_newstringfrom(J,  js_tovalue(J, idx)));
+	else
+		js_newstring(J, "");
 }
 
 void js_newfunction(js_State *J, js_Function *fun, js_Environment *scope)
@@ -610,7 +655,7 @@ int js_equal(js_State *J)
 
 retry:
 	if (JSV_ISSTRING(x) && JSV_ISSTRING(y))
-		return !strcmp(JSV_TOSTRING(x), JSV_TOSTRING(y));
+		return !strcmp((const char*)JSV_TOSTRING(x), (const char*)JSV_TOSTRING(y));
 	if (x->type == y->type) {
 		if (x->type == JS_TUNDEFINED) return 1;
 		if (x->type == JS_TNULL) return 1;
@@ -666,3 +711,40 @@ int js_strictequal(js_State *J)
 	if (x->type == JS_TOBJECT) return x->u.object == y->u.object;
 	return 0;
 }
+
+int jsV_getstrlen(js_State *J, js_Value *v) 
+{
+	js_StringNode *node;
+	switch (v->type) {
+		case JS_TSHRSTR:
+			return strlen(v->u.string.u.shrstr);
+		case JS_TLITSTR:
+		case JS_TMEMSTR:
+			node = js_tostringnode(v->u.string.u.ptr8);
+			return node->length;
+		case JS_TCONSTSTR:
+			return utflen(v->u.string.u.ptr8);
+		default:
+			break;
+	}
+	return 0;
+}
+
+int jsV_getstrsize(js_State *J, js_Value *v)
+{
+	js_StringNode *node;
+	switch (v->type) {
+		case JS_TSHRSTR:
+			return strlen(v->u.string.u.shrstr);
+		case JS_TLITSTR:
+		case JS_TMEMSTR:
+			node = js_tostringnode(v->u.string.u.ptr8);
+			return node->size;
+		case JS_TCONSTSTR:
+			return strlen(v->u.string.u.ptr8);
+		default:
+			break;
+	}
+	return 0;
+}
+

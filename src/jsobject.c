@@ -21,32 +21,32 @@ static void jsB_Object(js_State *J)
 static void Op_toString(js_State *J)
 {
 	if (js_isundefined(J, 0))
-		js_pushliteral(J, "[object Undefined]");
+		js_pushconst(J, "[object Undefined]");
 	else if (js_isnull(J, 0))
-		js_pushliteral(J, "[object Null]");
+		js_pushconst(J, "[object Null]");
 	else {
 		js_Object *self = js_toobject(J, 0);
 		switch (self->type) {
-		case JS_COBJECT: js_pushliteral(J, "[object Object]"); break;
-		case JS_CARRAY: js_pushliteral(J, "[object Array]"); break;
-		case JS_CFUNCTION: js_pushliteral(J, "[object Function]"); break;
-		case JS_CSCRIPT: js_pushliteral(J, "[object Function]"); break;
-		case JS_CCFUNCTION: js_pushliteral(J, "[object Function]"); break;
-		case JS_CERROR: js_pushliteral(J, "[object Error]"); break;
-		case JS_CBOOLEAN: js_pushliteral(J, "[object Boolean]"); break;
-		case JS_CNUMBER: js_pushliteral(J, "[object Number]"); break;
-		case JS_CSTRING: js_pushliteral(J, "[object String]"); break;
-		case JS_CREGEXP: js_pushliteral(J, "[object RegExp]"); break;
-		case JS_CDATE: js_pushliteral(J, "[object Date]"); break;
-		case JS_CMATH: js_pushliteral(J, "[object Math]"); break;
-		case JS_CJSON: js_pushliteral(J, "[object JSON]"); break;
-		case JS_CARGUMENTS: js_pushliteral(J, "[object Arguments]"); break;
-		case JS_CITERATOR: js_pushliteral(J, "[Iterator]"); break;
+		case JS_COBJECT: js_pushconst(J, "[object Object]"); break;
+		case JS_CARRAY: js_pushconst(J, "[object Array]"); break;
+		case JS_CFUNCTION: js_pushconst(J, "[object Function]"); break;
+		case JS_CSCRIPT: js_pushconst(J, "[object Function]"); break;
+		case JS_CCFUNCTION: js_pushconst(J, "[object Function]"); break;
+		case JS_CERROR: js_pushconst(J, "[object Error]"); break;
+		case JS_CBOOLEAN: js_pushconst(J, "[object Boolean]"); break;
+		case JS_CNUMBER: js_pushconst(J, "[object Number]"); break;
+		case JS_CSTRING: js_pushconst(J, "[object String]"); break;
+		case JS_CREGEXP: js_pushconst(J, "[object RegExp]"); break;
+		case JS_CDATE: js_pushconst(J, "[object Date]"); break;
+		case JS_CMATH: js_pushconst(J, "[object Math]"); break;
+		case JS_CJSON: js_pushconst(J, "[object JSON]"); break;
+		case JS_CARGUMENTS: js_pushconst(J, "[object Arguments]"); break;
+		case JS_CITERATOR: js_pushconst(J, "[Iterator]"); break;
 		case JS_CUSERDATA:
-			js_pushliteral(J, "[object ");
-			js_pushliteral(J, self->u.user.tag);
+			js_pushconst(J, "[object ");
+			js_pushconst(J, self->u.user.tag);
 			js_concat(J);
-			js_pushliteral(J, "]");
+			js_pushconst(J, "]");
 			js_concat(J);
 			break;
 		}
@@ -151,6 +151,7 @@ static int O_getOwnPropertyNames_walk(js_State *J, js_Property *ref, int i)
 
 static void O_getOwnPropertyNames(js_State *J)
 {
+	js_StringNode *node;
 	js_Object *obj;
 	int k;
 	int i;
@@ -167,29 +168,30 @@ static void O_getOwnPropertyNames(js_State *J)
 		i = 0;
 
 	if (obj->type == JS_CARRAY) {
-		js_pushliteral(J, "length");
+		js_pushconst(J, "length");
 		js_setindex(J, -2, i++);
 	}
 
 	if (obj->type == JS_CSTRING) {
-		js_pushliteral(J, "length");
+		node = js_tostringnode(obj->u.s.u.ptr8);
+		js_pushconst(J, "length");
 		js_setindex(J, -2, i++);
-		for (k = 0; k < obj->u.s.length; ++k) {
+		for (k = 0; k < (int)node->length; ++k) {
 			js_pushnumber(J, k);
 			js_setindex(J, -2, i++);
 		}
 	}
 
 	if (obj->type == JS_CREGEXP) {
-		js_pushliteral(J, "source");
+		js_pushconst(J, "source");
 		js_setindex(J, -2, i++);
-		js_pushliteral(J, "global");
+		js_pushconst(J, "global");
 		js_setindex(J, -2, i++);
-		js_pushliteral(J, "ignoreCase");
+		js_pushconst(J, "ignoreCase");
 		js_setindex(J, -2, i++);
-		js_pushliteral(J, "multiline");
+		js_pushconst(J, "multiline");
 		js_setindex(J, -2, i++);
-		js_pushliteral(J, "lastIndex");
+		js_pushconst(J, "lastIndex");
 		js_setindex(J, -2, i++);
 	}
 }
@@ -335,6 +337,7 @@ static int O_keys_walk(js_State *J, js_Property *ref, int i)
 
 static void O_keys(js_State *J)
 {
+	js_StringNode *node;
 	js_Object *obj;
 	int i, k;
 
@@ -350,7 +353,8 @@ static void O_keys(js_State *J)
 		i = 0;
 
 	if (obj->type == JS_CSTRING) {
-		for (k = 0; k < obj->u.s.length; ++k) {
+		node = js_tostringnode(obj->u.s.u.ptr8);
+		for (k = 0; k < (int)node->length; ++k) {
 			js_pushnumber(J, k);
 			js_setindex(J, -2, i++);
 		}

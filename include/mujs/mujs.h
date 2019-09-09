@@ -144,7 +144,6 @@ void js_pushboolean(js_State *J, int v);
 void js_pushnumber(js_State *J, double v);
 void js_pushstring(js_State *J, const char *v);
 void js_pushlstring(js_State *J, const char *v, int n);
-void js_pushliteral(js_State *J, const char *v);
 
 void js_newobjectx(js_State *J);
 void js_newobject(js_State *J);
@@ -253,6 +252,13 @@ void js_dellocalregistry(js_State *J, int idx, const char *name);
 /* push A object, push B object, pops both objects */
 void js_arefb(js_State *J);
 void js_aunrefb(js_State *J);
+/* additional string methods */
+unsigned int js_getstrlen(js_State *J, int idx);
+unsigned int js_getstrsize(js_State *J, int idx);
+void js_pushstringu(js_State *J, const char *v, int isunicode);
+int js_isstringu(js_State *J, int idx);
+void js_pushconst(js_State *J, const char *v);
+void js_pushconstu(js_State *J, const char *v, int isunicode);
 
 #ifdef __cplusplus
 }

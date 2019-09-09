@@ -15,16 +15,16 @@ static void jsR_run(js_State *J, js_Function *F);
 
 static void js_stackoverflow(js_State *J)
 {
-	STACK[TOP].type = JS_TLITSTR;
-	STACK[TOP].u.litstr = "stack overflow";
+	STACK[TOP].type = JS_TCONSTSTR;
+	STACK[TOP].u.string.u.ptr8 = "stack overflow";
 	++TOP;
 	js_throw(J);
 }
 
 static void js_outofmemory(js_State *J)
 {
-	STACK[TOP].type = JS_TLITSTR;
-	STACK[TOP].u.litstr = "out of memory";
+	STACK[TOP].type = JS_TCONSTSTR;
+	STACK[TOP].u.string.u.ptr8 = "out of memory";
 	++TOP;
 	js_throw(J);
 }
@@ -58,13 +58,16 @@ void js_free(js_State *J, void *ptr)
 	J->alloc(J->actx, ptr, 0);
 }
 
-js_String *jsV_newmemstring(js_State *J, const char *s, int n)
+js_StringNode *jsV_newmemstring(js_State *J, const char *s, int n)
 {
-	js_String *v = js_malloc(J, soffsetof(js_String, p) + n + 1);
-	memcpy(v->p, s, n);
-	v->p[n] = 0;
-	v->gcmark = 0;
-	v->gcnext = J->gcstr;
+	js_StringNode *v = js_malloc(J, soffsetof(js_StringNode, string) + n + 1);
+	memcpy(v->string, s, n);
+	v->string[n] = 0;
+	v->level = 0;
+	v->right = J->gcstr;
+	v->size = n;
+	v->length = n;
+	v->isunicode = 0;
 	J->gcstr = v;
 	++J->gccounter;
 	return v;
@@ -109,42 +112,101 @@ void js_pushnumber(js_State *J, double v)
 	++TOP;
 }
 
+void js_pushshrstr(js_State *J, const char *v, int len) 
+{ 
+	int n = M_MIN(len, soffsetof(js_Value, type));
+	CHECKSTACK(1);
+	char *s = STACK[TOP].u.string.u.shrstr;
+	while (n--) *s++ = *v++;
+	*s = 0;
+	STACK[TOP].type = JS_TSHRSTR;
+	++TOP;
+}
+
+void js_pushstringu(js_State *J, const char *v, int isunicode)
+{
+	js_Value *value = STACK + TOP;
+	js_StringNode *strnode;
+	unsigned int len, size = 0;
+	CHECKSTACK(1);
+	value->type = JS_TMEMSTR;
+	if (isunicode)
+		len = utflen2(v, &size);
+	else 
+		size = len = strlen(v);
+	strnode = jsV_newmemstring(J, v, size);
+	strnode->length = len;
+	strnode->size = size;
+	strnode->isunicode = isunicode;
+	value->u.string.u.ptr8 = strnode->string;
+	value->u.string.isunicode = isunicode;
+	++TOP;
+}
+
+// automatically detects string encoding
 void js_pushstring(js_State *J, const char *v)
 {
-	int n = strlen(v);
-	CHECKSTACK(1);
-	if (n <= soffsetof(js_Value, type)) {
-		char *s = STACK[TOP].u.shrstr;
-		while (n--) *s++ = *v++;
-		*s = 0;
-		STACK[TOP].type = JS_TSHRSTR;
-	} else {
-		STACK[TOP].type = JS_TMEMSTR;
-		STACK[TOP].u.memstr = jsV_newmemstring(J, v, n);
-	}
-	++TOP;
+	js_pushlstring(J, v, JS_MAX_STRING);
 }
 
 void js_pushlstring(js_State *J, const char *v, int n)
 {
+	unsigned int len;
+    js_StringNode *strnode;
+    js_Value *value = STACK + TOP;
+    const unsigned char *ptr = (const unsigned char*)v;
 	CHECKSTACK(1);
-	if (n <= soffsetof(js_Value, type)) {
-		char *s = STACK[TOP].u.shrstr;
-		while (n--) *s++ = *v++;
-		*s = 0;
-		STACK[TOP].type = JS_TSHRSTR;
-	} else {
-		STACK[TOP].type = JS_TMEMSTR;
-		STACK[TOP].u.memstr = jsV_newmemstring(J, v, n);
-	}
-	++TOP;
+	for (len = 0; *ptr && *ptr < Runeself && len < (unsigned int)n; ++len, ++ptr) {}
+    if (*ptr == 0 && (len <= soffsetof(js_Value, type))) {
+		char *s = value->u.string.u.shrstr;
+		memcpy(s, v, len);
+		s[len] = 0;
+		value->type = JS_TSHRSTR;
+    } else {
+    	unsigned int size = len;
+    	int isunicode = *ptr != 0;
+		value->type = JS_TMEMSTR;
+		if (isunicode) {
+			len += utfnlen2((const char*)ptr, n - size, &size);
+		}
+    	strnode = jsV_newmemstring(J, v, size);
+    	if (!strnode)
+			js_error(J, "could not allocate string");
+		strnode->length = len;
+		strnode->size = size;
+		strnode->isunicode = isunicode;
+		STACK[TOP].u.string.u.ptr8 = strnode->string;
+		STACK[TOP].u.string.isunicode = isunicode;
+    }
+    ++TOP;
 }
 
 void js_pushliteral(js_State *J, const char *v)
 {
+	js_StringNode *node;
 	CHECKSTACK(1);
+	node = js_tostringnode(v);
 	STACK[TOP].type = JS_TLITSTR;
-	STACK[TOP].u.litstr = v;
+	STACK[TOP].u.string.u.ptr8 = v;
+	STACK[TOP].u.string.isunicode = node->isunicode;
+	++TOP;
+}
+
+void js_pushconst(js_State *J, const char *v)
+{
+	CHECKSTACK(1);
+	STACK[TOP].type = JS_TCONSTSTR;
+	STACK[TOP].u.string.u.ptr8 = v;
+	STACK[TOP].u.string.isunicode = 1;
+	++TOP;
+}
+
+void js_pushconstu(js_State *J, const char *v, int isunicode)
+{
+	CHECKSTACK(1);
+	STACK[TOP].type = JS_TCONSTSTR;
+	STACK[TOP].u.string.u.ptr8 = v;
+	STACK[TOP].u.string.isunicode = isunicode;
 	++TOP;
 }
 
@@ -189,10 +251,15 @@ int js_isundefined(js_State *J, int idx) { return stackidx(J, idx)->type == JS_T
 int js_isnull(js_State *J, int idx) { return stackidx(J, idx)->type == JS_TNULL; }
 int js_isboolean(js_State *J, int idx) { return stackidx(J, idx)->type == JS_TBOOLEAN; }
 int js_isnumber(js_State *J, int idx) { return stackidx(J, idx)->type == JS_TNUMBER; }
-int js_isstring(js_State *J, int idx) { enum js_Type t = stackidx(J, idx)->type; return t == JS_TSHRSTR || t == JS_TLITSTR || t == JS_TMEMSTR; }
+int js_isstring(js_State *J, int idx) { enum js_Type t = stackidx(J, idx)->type; return t == JS_TSHRSTR || t == JS_TLITSTR || t == JS_TMEMSTR || t == JS_TCONSTSTR; }
 int js_isprimitive(js_State *J, int idx) { return stackidx(J, idx)->type != JS_TOBJECT; }
 int js_isobject(js_State *J, int idx) { return stackidx(J, idx)->type == JS_TOBJECT; }
 int js_iscoercible(js_State *J, int idx) { js_Value *v = stackidx(J, idx); return v->type != JS_TUNDEFINED && v->type != JS_TNULL; }
+int js_isstringu(js_State *J, int idx)
+{
+	js_Value *value = stackidx(J, idx); 
+	return (value->type == JS_TLITSTR || value->type == JS_TMEMSTR || value->type == JS_TCONSTSTR) ? value->u.string.isunicode : 0;
+}
 
 int js_iscallable(js_State *J, int idx)
 {
@@ -235,12 +302,13 @@ const char *js_typeof(js_State *J, int idx)
 	js_Value *v = stackidx(J, idx);
 	switch (v->type) {
 	default:
-	case JS_TSHRSTR: return "string";
 	case JS_TUNDEFINED: return "undefined";
 	case JS_TNULL: return "object";
 	case JS_TBOOLEAN: return "boolean";
 	case JS_TNUMBER: return "number";
-	case JS_TLITSTR: return "string";
+	case JS_TSHRSTR:
+	case JS_TLITSTR:
+	case JS_TCONSTSTR:
 	case JS_TMEMSTR: return "string";
 	case JS_TOBJECT:
 		if (v->u.object->type == JS_CFUNCTION || v->u.object->type == JS_CCFUNCTION)
@@ -488,7 +556,7 @@ static void js_pushrune(js_State *J, Rune rune)
 	char buf[UTFmax + 1];
 	if (rune > 0) {
 		buf[runetochar(buf, &rune)] = 0;
-		js_pushstring(J, buf);
+		js_pushstringu(J, buf, 1);
 	} else {
 		js_pushundefined(J);
 	}
@@ -496,6 +564,7 @@ static void js_pushrune(js_State *J, Rune rune)
 
 static int jsR_hasproperty(js_State *J, js_Object *obj, const char *name)
 {
+	js_StringNode *strnode;
 	js_Property *ref;
 	int k;
 
@@ -507,21 +576,25 @@ static int jsR_hasproperty(js_State *J, js_Object *obj, const char *name)
 	}
 
 	else if (obj->type == JS_CSTRING) {
+		strnode = js_tostringnode(obj->u.s.u.ptr8);
 		if (!strcmp(name, "length")) {
-			js_pushnumber(J, obj->u.s.length);
+			js_pushnumber(J, strnode->length);
 			return 1;
 		}
 		if (js_isarrayindex(J, name, &k)) {
-			if (k >= 0 && k < obj->u.s.length) {
-				js_pushrune(J, js_runeat(J, obj->u.s.string, k));
-				return 1;
-			}
+			if (k >= 0 && k < (int)strnode->length) {
+				if (obj->u.s.isunicode)
+					js_pushrune(J, js_runeat(J, obj->u.s.u.ptr8, k));
+				else 
+					js_pushlstring(J, obj->u.s.u.ptr8 + k, 1);
+ 				return 1;
+ 			}
 		}
 	}
 
 	else if (obj->type == JS_CREGEXP) {
 		if (!strcmp(name, "source")) {
-			js_pushliteral(J, obj->u.r.source);
+			js_pushconst(J, obj->u.r.source);
 			return 1;
 		}
 		if (!strcmp(name, "global")) {
@@ -570,6 +643,7 @@ static void jsR_getproperty(js_State *J, js_Object *obj, const char *name)
 
 static void jsR_setproperty(js_State *J, js_Object *obj, const char *name)
 {
+	js_StringNode *strnode;
 	js_Value *value = stackidx(J, -1);
 	js_Property *ref;
 	int k;
@@ -592,9 +666,11 @@ static void jsR_setproperty(js_State *J, js_Object *obj, const char *name)
 	else if (obj->type == JS_CSTRING) {
 		if (!strcmp(name, "length"))
 			goto readonly;
-		if (js_isarrayindex(J, name, &k))
-			if (k >= 0 && k < obj->u.s.length)
+		if (js_isarrayindex(J, name, &k)) {
+			strnode = js_tostringnode(obj->u.s.u.ptr8);
+			if (k >= 0 && k < (int)strnode->length)
 				goto readonly;
+		}
 	}
 
 	else if (obj->type == JS_CREGEXP) {
@@ -651,6 +727,7 @@ readonly:
 static void jsR_defproperty(js_State *J, js_Object *obj, const char *name,
 	int atts, js_Value *value, js_Object *getter, js_Object *setter)
 {
+	js_StringNode *strnode;
 	js_Property *ref;
 	int k;
 
@@ -662,9 +739,11 @@ static void jsR_defproperty(js_State *J, js_Object *obj, const char *name,
 	else if (obj->type == JS_CSTRING) {
 		if (!strcmp(name, "length"))
 			goto readonly;
-		if (js_isarrayindex(J, name, &k))
-			if (k >= 0 && k < obj->u.s.length)
+		if (js_isarrayindex(J, name, &k)) {
+			strnode = js_tostringnode(obj->u.s.u.ptr8);
+			if (k >= 0 && k < (int)strnode->length)
 				goto readonly;
+		}
 	}
 
 	else if (obj->type == JS_CREGEXP) {
@@ -712,6 +791,7 @@ readonly:
 
 static int jsR_delproperty(js_State *J, js_Object *obj, const char *name)
 {
+	js_StringNode *strnode;
 	js_Property *ref;
 	int k;
 
@@ -723,9 +803,11 @@ static int jsR_delproperty(js_State *J, js_Object *obj, const char *name)
 	else if (obj->type == JS_CSTRING) {
 		if (!strcmp(name, "length"))
 			goto dontconf;
-		if (js_isarrayindex(J, name, &k))
-			if (k >= 0 && k < obj->u.s.length)
-				goto dontconf;
+		if (js_isarrayindex(J, name, &k)) {
+			strnode = js_tostringnode(obj->u.s.u.ptr8);
+			if (k >= 0 && k < (int)strnode->length)
+ 				goto dontconf;
+		}
 	}
 
 	else if (obj->type == JS_CREGEXP) {
@@ -857,8 +939,23 @@ void js_defglobal(js_State *J, const char *name, int atts)
 	js_pop(J, 1);
 }
 
+unsigned int js_getstrlen(js_State *J, int idx)
+{
+	return jsV_getstrlen(J, js_tovalue(J, idx));
+}
+
+unsigned int js_getstrsize(js_State *J, int idx)
+{	
+	return jsV_getstrsize(J, js_tovalue(J, idx));
+}
+
 void js_getproperty(js_State *J, int idx, const char *name)
 {
+	// quick length lookup
+	if (!strcmp(name, "length") && js_isstring(J, idx)) {
+		js_pushnumber(J, (double)jsV_getstrlen(J, js_tovalue(J, idx)));
+		return;
+	}
 	jsR_getproperty(J, js_toobject(J, idx), name);
 }
 

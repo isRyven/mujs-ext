@@ -16,7 +16,7 @@ static void Bp_toString(js_State *J)
 {
 	js_Object *self = js_toobject(J, 0);
 	if (self->type != JS_CBOOLEAN) js_typeerror(J, "not a boolean");
-	js_pushliteral(J, self->u.boolean ? "true" : "false");
+	js_pushconst(J, self->u.boolean ? "true" : "false");
 }
 
 static void Bp_valueOf(js_State *J)

@@ -17,9 +17,10 @@ enum js_Type {
 	JS_TNULL,
 	JS_TBOOLEAN,
 	JS_TNUMBER,
-	JS_TLITSTR,
+	JS_TLITSTR, /* literal strings, comming from parser */
 	JS_TMEMSTR,
 	JS_TOBJECT,
+	JS_TCONSTSTR /* constant strings, never deallocated */
 };
 
 enum js_Class {
@@ -48,25 +49,26 @@ enum js_Class {
 	purpose as the string zero terminator.
 */
 
+struct js_String
+{
+	union {
+	    char shrstr[8];
+        const char *ptr8;
+        const uint16_t *ptr16;
+    } u;
+    int isunicode;
+};
+
 struct js_Value
 {
 	union {
 		int boolean;
 		double number;
-		char shrstr[8];
-		const char *litstr;
-		js_String *memstr;
+		js_String string;
 		js_Object *object;
 	} u;
 	char pad[7]; /* extra storage for shrstr */
 	char type; /* type tag and zero terminator for shrstr */
-};
-
-struct js_String
-{
-	js_String *gcnext;
-	char gcmark;
-	char p[1];
 };
 
 struct js_Regexp
@@ -88,10 +90,7 @@ struct js_Object
 	union {
 		int boolean;
 		double number;
-		struct {
-			const char *string;
-			int length;
-		} s;
+		js_String s;
 		struct {
 			int length;
 		} a;
@@ -141,7 +140,7 @@ struct js_Iterator
 };
 
 /* jsrun.c */
-js_String *jsV_newmemstring(js_State *J, const char *s, int n);
+js_StringNode *jsV_newmemstring(js_State *J, const char *s, int n);
 js_Value *js_tovalue(js_State *J, int idx);
 void js_toprimitive(js_State *J, int idx, int hint);
 js_Object *js_toobject(js_State *J, int idx);
@@ -183,5 +182,9 @@ void jsV_resizearray(js_State *J, js_Object *obj, int newlen);
 /* jsdump.c */
 void js_dumpobject(js_State *J, js_Object *obj);
 void js_dumpvalue(js_State *J, js_Value v);
+
+void js_newstringfrom(js_State *J, int idx);
+int jsV_getstrlen(js_State *J, js_Value *v);
+int jsV_getstrsize(js_State *J, js_Value *v);
 
 #endif

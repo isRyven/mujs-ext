@@ -237,7 +237,7 @@ static int eval_print(js_State *J, const char *source)
 		return 1;
 	}
 	if (js_isdefined(J, -1)) {
-		printf("%s\n", js_tryrepr(J, -1, "can't convert to string"));
+		printf("%s\n", js_trystring(J, -1, "can't convert to string"));
 	}
 	js_pop(J, 1);
 	return 0;
