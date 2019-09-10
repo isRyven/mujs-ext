@@ -17,6 +17,7 @@ static void reprnum(js_State *J, js_StringBuffer **sb, double n)
 		js_puts(J, sb, jsV_numbertostring(J, buf, n));
 }
 
+#if 0
 static void reprstr(js_State *J, js_StringBuffer **sb, const char *s)
 {
 	static const char *HEX = "0123456789ABCDEF";
@@ -43,6 +44,28 @@ static void reprstr(js_State *J, js_StringBuffer **sb, const char *s)
 				js_putc(J, sb, c); break;
 			}
 		}
+	}
+	js_putc(J, sb, '"');
+}
+#endif
+
+// keep utf8 representation
+static void reprstr(js_State *J, js_StringBuffer **sb, const char *s)
+{
+	js_putc(J, sb, '"');
+	while (*s) {
+		switch (*s) {
+		case '"': js_puts(J, sb, "\\\""); break;
+		case '\\': js_puts(J, sb, "\\\\"); break;
+		case '\b': js_puts(J, sb, "\\b"); break;
+		case '\f': js_puts(J, sb, "\\f"); break;
+		case '\n': js_puts(J, sb, "\\n"); break;
+		case '\r': js_puts(J, sb, "\\r"); break;
+		case '\t': js_puts(J, sb, "\\t"); break;
+		default:
+			js_putc(J, sb, *s);
+		}
+		s++;
 	}
 	js_putc(J, sb, '"');
 }

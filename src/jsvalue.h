@@ -17,7 +17,7 @@ enum js_Type {
 	JS_TNULL,
 	JS_TBOOLEAN,
 	JS_TNUMBER,
-	JS_TLITSTR, /* literal strings, comming from parser */
+	JS_TLITSTR, /* script literal strings */
 	JS_TMEMSTR,
 	JS_TOBJECT,
 	JS_TCONSTSTR /* constant strings, never deallocated */
