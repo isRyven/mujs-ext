@@ -73,3 +73,5 @@ if(DEFINED JSCOMPILER AND JSCOMPILER EQUAL 0)
 		target_compile_definitions(mujs-repl PRIVATE JSON_PARSER_DISABLED)
 	endif()
 endif()
+
+add_subdirectory(test)
