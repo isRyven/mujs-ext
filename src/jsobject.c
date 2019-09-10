@@ -474,37 +474,23 @@ static void O_isFrozen(js_State *J)
 
 void js_seal(js_State *J)
 {
-	if (!js_isobject(J, -1))
-		js_typeerror(J, "not an object");
-	js_getglobal(J, "Object");
-	js_getproperty(J, -1, "seal");
-	js_rot2(J); // freeze, Object
-	js_copy(J, -3); // object
-	js_call(J, 1);
-	js_pop(J, 1);
+	js_pushundefined(J);
+	js_rot2(J);
+	js_callscoped2(J, O_seal, 1);
 }
 
 void js_freeze(js_State *J)
 {
-	if (!js_isobject(J, -1))
-		js_typeerror(J, "not an object");
-	js_getglobal(J, "Object");
-	js_getproperty(J, -1, "freeze");
-	js_rot2(J); // freeze, Object
-	js_copy(J, -3); // object
-	js_call(J, 1);
-	js_pop(J, 1);
+	js_pushundefined(J);
+	js_rot2(J);
+	js_callscoped2(J, O_freeze, 1);
 }
 
 int js_issealed(js_State *J)
 {
-	if (!js_isobject(J, -1))
-		js_typeerror(J, "not an object");
-	js_getglobal(J, "Object");
-	js_getproperty(J, -1, "isSealed");
-	js_rot2(J); // isSealed, Object
-	js_copy(J, -3); // sealed object
-	js_call(J, 1);
+	js_pushundefined(J);
+	js_copy(J, -2);
+	js_callscoped2(J, O_isSealed, 1);
 	int result = js_toboolean(J, -1);
 	js_pop(J, 1);
 	return result;
@@ -512,13 +498,9 @@ int js_issealed(js_State *J)
 
 int js_isfrozen(js_State *J)
 {
-	if (!js_isobject(J, -1))
-		js_typeerror(J, "not an object");
-	js_getglobal(J, "Object");
-	js_getproperty(J, -1, "isFrozen");
-	js_rot2(J); // isFrozen, Object
-	js_copy(J, -3); // frozen object
-	js_call(J, 1);
+	js_pushundefined(J);
+	js_copy(J, -2);
+	js_callscoped2(J, O_isFrozen, 1);
 	int result = js_toboolean(J, -1);
 	js_pop(J, 1);
 	return result;
