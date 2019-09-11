@@ -18,18 +18,20 @@
 * Added `js_loadstringE` to load code with predefined environment variables (push object, call func).
 * Added `js_getlocalregistry`, `js_setlocalregistry`, `js_dellocalregistry` to define hidden properties in object bound registry.  
   Useful for userdatas, as an alternative to `js_ref`.
-* Added `js_arefb`, `js_aunrefb` convenience facility to internally create one-way reference between objects.  
+* Added `js_arefb`, `js_aunrefb` convenience facility to internally create one-way reference between objects.   
   This prevents garbage collection of referenced object, until its parent is collected.
 * Increased ASCII strings performance.
-* Improved property look up performance.
+* Improved property look up performance.  
   Should now also save the property order, however, indexes are not handled somehow special.
 * Added `js_resolvetypename` to fetch proper instance type name from the constructor.
 * Added facility to write and read octet buffer.
 * Added `js_dumpscript` function to dump script function into binary format.
-* Added `js_loadbin`, `js_ploadbin` functions to parse the precompiled script binary.
+* Added `js_loadbin`, `js_ploadbin` functions to parse the precompiled script binary.  
   Script function is pushed on the stack on success.
 * Added `js_loadbinfile`, `js_ploadbinfile` functions to load precompiled scirpt binary from the file. 
 * Added `-c` and `-f` flags to mujs executable, which can be used to precompile and load scripts.
-* Added `JSCOMPILER` and `JSONPARSER` cmake definitions to exclude js compiler from the compiled binary.
+* Added `JSCOMPILER` and `JSONPARSER` cmake definitions to exclude js compiler from the compiled binary.  
   Use `-DJSCOMPILER=0` to disable js compiler. Results in smaller binary.
 * Converted API documentaion into markdown format.
+* Reverted f5de9d4. It was affecting precompiled scripts size in a negative way.    
+  However, it's probably still a packer issue, so this might get back at some point.

@@ -1544,8 +1544,6 @@ static void jsR_run(js_State *J, js_Function *F)
 		if (J->gccounter > JS_GCLIMIT)
 			js_gc(J, 0);
 
-		J->trace[J->tracetop].line = *pc++;
-
 		opcode = *pc++;
 
 		switch (opcode) {
@@ -1991,6 +1989,10 @@ static void jsR_run(js_State *J, js_Function *F)
 		case OP_RETURN:
 			J->strict = savestrict;
 			return;
+
+		case OP_LINE:
+			J->trace[J->tracetop].line = *pc++;
+			break;
 		}
 	}
 }
