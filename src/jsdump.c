@@ -980,8 +980,14 @@ static void jsC_dumpfuncbin(js_State *J, js_Function *F, js_Buffer *sb, hashtabl
 	if (F->codelen) {
 		jsbuf_puti8(J, sb, BF_FUNCCODE);
 		jsbuf_puti32(J, sb, F->codelen);
-		for (i = 0; i < F->codelen; i++)
-			jsbuf_puti32(J, sb, F->code[i]);
+		for (i = 0; i < F->codelen; i++) {
+			if (M_IN_RANGE(F->code[i], 0, 0xFFFF))
+				jsbuf_putu16(J, sb, (uint16_t)F->code[i]);
+			else {
+				jsbuf_putu16(J, sb, 0xFFFF);
+				jsbuf_puti32(J, sb, F->code[i]);
+			}
+		}
 	}
 	if (F->funlen) {
 		jsbuf_puti8(J, sb, BF_FUNCFUNS);

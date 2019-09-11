@@ -325,8 +325,13 @@ static js_Function* js_loadfuncbin(js_State *J, js_Buffer *sb, hashtable_t *stri
 			len = jsbuf_geti32(J, sb);
 			F->code = js_malloc(J, sizeof(js_Instruction) * len);
 			F->codelen = len;
-			for (i = 0; i < len; ++i)
-				F->code[i] = jsbuf_geti32(J, sb);
+			for (i = 0; i < len; ++i) {
+				tempi = jsbuf_getu16(J, sb);
+				if (tempi == 0xFFFF) 
+					F->code[i] = jsbuf_geti32(J, sb);
+				else 
+					F->code[i] = tempi;
+			}
 		} else if (tempi == BF_FUNCFUNS) {
 			len = jsbuf_geti32(J, sb);
 			F->funtab = js_malloc(J, sizeof(js_Function*) * len);
