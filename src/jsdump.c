@@ -791,10 +791,9 @@ void jsC_dumpfunction(js_State *J, js_Function *F)
 
 	printf("{\n");
 	while (p < end) {
-		int ln = *p++;
 		int c = *p++;
 
-		printf("%5d(%3d): ", (int)(p - F->code) - 2, ln);
+		printf("% 5d: ", (int)(p - F->code) - 1);
 		ps(opname[c]);
 
 		switch (c) {
@@ -832,6 +831,7 @@ void jsC_dumpfunction(js_State *J, js_Function *F)
 			printf(" %s", F->vartab[*p++ - 1]);
 			break;
 
+		case OP_LINE:
 		case OP_CLOSURE:
 		case OP_CALL:
 		case OP_NEW:
