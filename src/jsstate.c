@@ -272,8 +272,8 @@ int js_dofile(js_State *J, const char *filename)
 
 static const char* js_loadfuncbin_string(js_State *J, js_Buffer *sb, hashtable_t *strings) 
 {
-	uint32_t id = jsbuf_getu32(J, sb);
-	if (id == 0xFFFFFFFF) {
+	uint32_t id = jsbuf_getu16(J, sb);
+	if (id == 0xFFFF) {
 		const char* temps = jsbuf_gets(J, sb);
 		const char *str = js_intern(J, temps);
 		uint64_t addr = (uint64_t)str;
@@ -349,10 +349,13 @@ static js_Function* js_loadfuncbin(js_State *J, js_Buffer *sb, hashtable_t *stri
 
 void js_loadbin(js_State *J, const char *source, int length)
 {
+	int flags;
 	js_Buffer buf;
 	js_Function *F;
 	hashtable_t strings;
-	hashtable_init(&strings, sizeof(uint64_t), 256, NULL);;
+	if (length < 8)
+		js_error(J, "invalid binary");
+	hashtable_init(&strings, sizeof(uint64_t), 256, NULL);
 	jsbuf_init(J, &buf, length);
 	jsbuf_putb(J, &buf, (uint8_t*)source, length);
 	buf.n = 0; // reset cursor
@@ -363,6 +366,9 @@ void js_loadbin(js_State *J, const char *source, int length)
 		hashtable_term(&strings);
 		js_throw(J);
 	}
+	if (jsbuf_geti32(J, &buf) != 0x736a756d)
+		js_error(J, "invalid binary");
+	flags = jsbuf_geti32(J, &buf);
 	F = js_loadfuncbin(J, &buf, &strings);
 	js_newscript(J, F, J->GE);
 	js_endtry(J);
