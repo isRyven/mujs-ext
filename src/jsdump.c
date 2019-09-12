@@ -925,19 +925,21 @@ static void jsC_dumpfuncbin_string(js_State *J, js_Buffer *buf, hashtable_t *str
 {
 	// 0 -> empty string
 	// positive id -> string reference
-	// 0xFFFFFFFF -> new string
+	// 0xFFFF -> new string
 	if (str[0]) {
 		uint32_t *id = hashtable_find(strings, (uint64_t)str);
 		if (id)
-			jsbuf_putu32(J, buf, *id);
+			jsbuf_putu16(J, buf, *id);
 		else {
 			uint32_t newid = hashtable_count(strings) + 1;
+			if (newid >= 0xFFFF)
+				js_error(J, "id overflow"); 
 			hashtable_insert(strings, (uint64_t)str, &newid);
-			jsbuf_putu32(J, buf, 0xFFFFFFFF);
+			jsbuf_putu16(J, buf, 0xFFFF);
 			jsbuf_putsz(J, buf, str);
 		}
 	} else
-		jsbuf_putu32(J, buf, 0);
+		jsbuf_putu16(J, buf, 0);
 }
 
 static void jsC_dumpfuncbin(js_State *J, js_Function *F, js_Buffer *sb, hashtable_t *strings)
@@ -980,8 +982,14 @@ static void jsC_dumpfuncbin(js_State *J, js_Function *F, js_Buffer *sb, hashtabl
 	if (F->codelen) {
 		jsbuf_puti8(J, sb, BF_FUNCCODE);
 		jsbuf_puti32(J, sb, F->codelen);
-		for (i = 0; i < F->codelen; i++)
-			jsbuf_puti32(J, sb, F->code[i]);
+		for (i = 0; i < F->codelen; i++) {
+			if (M_IN_RANGE(F->code[i], 0, 0xFFFF))
+				jsbuf_putu16(J, sb, (uint16_t)F->code[i]);
+			else {
+				jsbuf_putu16(J, sb, 0xFFFF);
+				jsbuf_puti32(J, sb, F->code[i]);
+			}
+		}
 	}
 	if (F->funlen) {
 		jsbuf_puti8(J, sb, BF_FUNCFUNS);
@@ -997,8 +1005,9 @@ js_Buffer js_dumpfuncbin(js_State *J, js_Function *F)
 	jsbuf_init(J, &buf, 512);
 	hashtable_t strings;
 	hashtable_init(&strings, sizeof(uint32_t), 256, NULL);	
+	jsbuf_puti32(J, &buf, 0x736a756d);
+	jsbuf_puti32(J, &buf, 0);
 	jsC_dumpfuncbin(J, F, &buf, &strings);
 	hashtable_term(&strings);
 	return buf;
 }
-
