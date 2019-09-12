@@ -17,11 +17,11 @@ static int jsB_stacktrace(js_State *J, int skip)
 		int line = J->trace[n].line;
 		if (line > 0) {
 			if (name[0])
-				snprintf(buf, sizeof buf, "\n\tat %s (%s:%d)", name, file, line);
+				snprintf(buf, sizeof buf, "\n\tat %s (%s:%d)", name, S_EITHER_STR(file, "??"), line);
 			else
-				snprintf(buf, sizeof buf, "\n\tat %s:%d", file, line);
+				snprintf(buf, sizeof buf, "\n\tat %s:%d", S_EITHER_STR(file, "??"), line);
 		} else
-			snprintf(buf, sizeof buf, "\n\tat %s (%s)", name, file);
+			snprintf(buf, sizeof buf, "\n\tat %s (%s)", S_EITHER_STR(name, "??"), S_EITHER_STR(file, "??"));
 		js_pushstring(J, buf);
 		if (n < J->tracetop - skip)
 			js_concat(J);

@@ -308,6 +308,7 @@ static void usage(void)
 	fprintf(stderr, "\t-e: Evaluate string.\n");
 	fprintf(stderr, "\t-c: Precompile script.\n");
 	fprintf(stderr, "\t-f: Load precompiled script.\n");
+	fprintf(stderr, "\t-d: Strip debug info from precompiled script.\n");
 	exit(1);
 }
 
@@ -321,9 +322,10 @@ int main(int argc, char **argv)
 	int evalstr = 0;
 	int precompile = 0;
 	int loadprecompile = 0;
+	int striptdebug = 0;
 	int i, c;
 
-	while ((c = xgetopt(argc, argv, "isecf")) != -1) {
+	while ((c = xgetopt(argc, argv, "isecfd")) != -1) {
 		switch (c) {
 		default: usage(); break;
 		case 'i': interactive = 1; break;
@@ -331,6 +333,7 @@ int main(int argc, char **argv)
 		case 'e': evalstr = 1; break;
 		case 'c': precompile = 1; break;
 		case 'f': loadprecompile = 1; break;
+		case 'd': striptdebug = 1; break;
 		}
 	}
 
@@ -383,7 +386,7 @@ int main(int argc, char **argv)
 		} else if (precompile) {
 			if (!js_ploadfile(J, argv[c])) {
 				char *buf;
-				int size = js_dumpscript(J, -1, &buf);
+				int size = js_dumpscript(J, -1, &buf, striptdebug ? JS_BINSTRIPDEBUG : 0);
 				if (buf) {
 					char outpath[MAX_OSPATH] = {0};
 					sprintf(outpath, "./%s.out", getbasename(argv[c]));
