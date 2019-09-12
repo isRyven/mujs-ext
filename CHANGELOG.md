@@ -35,3 +35,4 @@
 * Converted API documentaion into markdown format.
 * Reverted f5de9d4. It was affecting precompiled scripts size in a negative way.    
   However, it's probably still a packer issue, so this might get back at some point.
+* Added `-d` flag to mujs executable, which can be used to strip debug information from precompiled script, to produce smaller binary.

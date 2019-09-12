@@ -787,12 +787,12 @@ const char* js_resolvetypename(js_State *J, int idx)
     return jsV_resolvetypename(J, js_tovalue(J, idx), "");
 }
 
-int js_dumpscript(js_State *J, int idx, char **buffer)
+int js_dumpscript(js_State *J, int idx, char **buffer, int flags)
 {
 	js_Object *obj = js_toobject(J, idx);
 	if (obj->type != JS_CSCRIPT)
 		js_typeerror(J, "expected script value");
-	js_Buffer buf = js_dumpfuncbin(J, obj->u.f.function);
+	js_Buffer buf = js_dumpfuncbin(J, obj->u.f.function, flags);
 	if (buf.data == NULL)
 		return 0;
 	if (buf.n == 0) {

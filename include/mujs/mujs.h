@@ -265,7 +265,10 @@ void js_pushconstu(js_State *J, const char *v, int isunicode);
 /* fetch instance type name from the constructor */
 const char* js_resolvetypename(js_State *J, int idx);
 /* precompile binary */
-int js_dumpscript(js_State *J, int idx, char **buf);
+enum {
+	JS_BINSTRIPDEBUG = 1
+};
+int js_dumpscript(js_State *J, int idx, char **buf, int flags);
 void js_loadbin(js_State *J, const char *source, int length);
 int js_ploadbin(js_State *J, const char *source, int length);
 void js_loadbinfile(js_State *J, const char *filename);

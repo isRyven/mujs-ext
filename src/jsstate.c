@@ -284,7 +284,7 @@ static const char* js_loadfuncbin_string(js_State *J, js_Buffer *sb, hashtable_t
 	return *(const char**)hashtable_find(strings, id);
 }
 
-static js_Function* js_loadfuncbin(js_State *J, js_Buffer *sb, hashtable_t *strings) 
+static js_Function* js_loadfuncbin(js_State *J, js_Buffer *sb, hashtable_t *strings, int flags) 
 {
 	int tempi, len, i;
 	js_Function *F = jsV_newfunction(J);
@@ -293,16 +293,19 @@ static js_Function* js_loadfuncbin(js_State *J, js_Buffer *sb, hashtable_t *stri
 	while (sb->n < sb->m) {
 		tempi = jsbuf_geti8(J, sb);
 		if (tempi == BF_FUNCMETA) {
-			F->name = js_loadfuncbin_string(J, sb, strings);
+			F->name = (flags & JS_BINSTRIPDEBUG) ? "" : js_loadfuncbin_string(J, sb, strings); 
 			tempi = jsbuf_geti8(J, sb);
 			F->script = BITGET(tempi, 0); 
 			F->lightweight = BITGET(tempi, 1); 
 			F->strict = BITGET(tempi, 2); 
 			F->arguments = BITGET(tempi, 3);
 			F->numparams = (int)jsbuf_getu16(J, sb);
-			F->filename = js_loadfuncbin_string(J, sb, strings);
-			F->line = jsbuf_geti32(J, sb);
-			F->lastline = jsbuf_geti32(J, sb);
+			F->filename = (flags & JS_BINSTRIPDEBUG) ? "" : js_loadfuncbin_string(J, sb, strings);
+			if (!(flags & JS_BINSTRIPDEBUG))
+			{
+				F->line = jsbuf_geti32(J, sb);
+				F->lastline = jsbuf_geti32(J, sb);
+			}
 		} else if (tempi == BF_FUNCNUMS) {
 			len = jsbuf_geti32(J, sb);
 			F->numtab = js_malloc(J, sizeof(double) * len);
@@ -337,7 +340,7 @@ static js_Function* js_loadfuncbin(js_State *J, js_Buffer *sb, hashtable_t *stri
 			F->funtab = js_malloc(J, sizeof(js_Function*) * len);
 			F->funlen = len;
 			for (i = 0; i < len; ++i)
-				F->funtab[i] = js_loadfuncbin(J, sb, strings);
+				F->funtab[i] = js_loadfuncbin(J, sb, strings, flags);
 		} else if (tempi == BF_FUNCDECL) {
 			sb->n--;
 			break;
@@ -369,7 +372,7 @@ void js_loadbin(js_State *J, const char *source, int length)
 	if (jsbuf_geti32(J, &buf) != 0x736a756d)
 		js_error(J, "invalid binary");
 	flags = jsbuf_geti32(J, &buf);
-	F = js_loadfuncbin(J, &buf, &strings);
+	F = js_loadfuncbin(J, &buf, &strings, flags);
 	js_newscript(J, F, J->GE);
 	js_endtry(J);
 	jsbuf_free(J, &buf);

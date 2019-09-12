@@ -199,7 +199,7 @@ typedef enum {
 	BF_FUNCFUNS 
 } binfuncseg_t;
 
-js_Buffer js_dumpfuncbin(js_State *J, js_Function *F);
+js_Buffer js_dumpfuncbin(js_State *J, js_Function *F, int flags);
 js_Function *jsV_newfunction(js_State *J);
 
 #endif
