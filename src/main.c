@@ -322,7 +322,7 @@ int main(int argc, char **argv)
 	int evalstr = 0;
 	int precompile = 0;
 	int loadprecompile = 0;
-	int striptdebug = 0;
+	int stripdebug = 0;
 	int i, c;
 
 	while ((c = xgetopt(argc, argv, "isecfd")) != -1) {
@@ -333,7 +333,7 @@ int main(int argc, char **argv)
 		case 'e': evalstr = 1; break;
 		case 'c': precompile = 1; break;
 		case 'f': loadprecompile = 1; break;
-		case 'd': striptdebug = 1; break;
+		case 'd': stripdebug = 1; break;
 		}
 	}
 
@@ -384,24 +384,38 @@ int main(int argc, char **argv)
 			if (eval_print(J, argv[c]))
 				status = 1;
 		} else if (precompile) {
-			if (!js_ploadfile(J, argv[c])) {
-				char *buf;
-				int size = js_dumpscript(J, -1, &buf, striptdebug ? JS_BINSTRIPDEBUG : 0);
-				if (buf) {
-					char outpath[MAX_OSPATH] = {0};
-					sprintf(outpath, "./%s.out", getbasename(argv[c]));
-					FILE *fd = fopen(outpath, "wb+");
-					int writes = fwrite(buf, 1, size, fd);
-					if (writes != size) {
-						printf("could not write out buffer\n");
+			for (i = c; i < argc; i++) {
+				if (!js_ploadfile(J, argv[i])) {
+					char *buf;
+					int size = js_dumpscript(J, -1, &buf, stripdebug ? JS_BINSTRIPDEBUG : 0);
+					if (buf) {
+						char outpath[MAX_OSPATH] = { 0 };
+						sprintf(outpath, "./%s.out", getbasename(argv[i]));
+						FILE *fd = fopen(outpath, "wb");
+						if (!fd) {
+							perror(argv[i]);
+							status = 1;
+							break;
+						}
+						int writes = fwrite(buf, 1, size, fd);
+						if (writes != size) {
+							perror(argv[i]);
+							printf("could not write out buffer\n");
+							status = 1;
+						}
+						fclose(fd);
+						js_free(J, buf);
+					} else {
+						printf("could not precompile script\n");
 						status = 1;
+						break;
 					}
-					fclose(fd);
-					js_free(J, buf);
-				} else
+				} else {
+					printf("could not load script\n");
 					status = 1;
-			} else
-				status = 1;
+					break;
+				}
+			}
 		} else if (loadprecompile) {
 			if (!js_ploadbinfile(J, argv[c])) {
 				js_pushundefined(J);
