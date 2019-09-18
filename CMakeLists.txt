@@ -75,3 +75,4 @@ if(DEFINED JSCOMPILER AND JSCOMPILER EQUAL 0)
 endif()
 
 add_subdirectory(test)
+add_subdirectory(deps/nozip)
