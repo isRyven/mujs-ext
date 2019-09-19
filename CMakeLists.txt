@@ -76,3 +76,4 @@ endif()
 
 add_subdirectory(test)
 add_subdirectory(deps/nozip)
+add_subdirectory(deps/toheader)
