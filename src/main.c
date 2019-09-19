@@ -26,7 +26,7 @@ const char* getbasename(const char *path)
 	strncpy(base, &path[length], MAX_OSPATH);
 	length = strlen(base) - 1;
 	// strip trailing slashes
-	while (length > 0 && (ISPATHSEP(path[length])))
+	while (length > 0 && (ISPATHSEP(base[length])))
 		base[length--] = '\0';
 	return base;
 }
