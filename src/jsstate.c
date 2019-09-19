@@ -350,7 +350,7 @@ static js_Function* js_loadfuncbin(js_State *J, js_Buffer *sb, hashtable_t *stri
 	return F;
 }
 
-void js_loadbin(js_State *J, const char *source, int length)
+static js_Function* js_loadfuncblob(js_State *J, const char *source, int length)
 {
 	int flags;
 	js_Buffer buf;
@@ -373,10 +373,25 @@ void js_loadbin(js_State *J, const char *source, int length)
 		js_error(J, "invalid binary");
 	flags = jsbuf_geti32(J, &buf);
 	F = js_loadfuncbin(J, &buf, &strings, flags);
-	js_newscript(J, F, J->GE);
 	js_endtry(J);
 	jsbuf_free(J, &buf);
 	hashtable_term(&strings);
+	return F;
+}
+
+void js_loadbin(js_State *J, const char *source, int length)
+{
+	js_Function *F = js_loadfuncblob(J, source, length);
+	js_newscript(J, F, J->GE);
+}
+
+void js_loadbinE(js_State *J, const char *source, int length)
+{
+	if (!js_isobject(J, -1))
+		js_typeerror(J, "expected object");
+	js_Function *F = js_loadfuncblob(J, source, length);
+	js_Environment *env = jsR_newenvironment(J, js_toobject(J, -1), J->GE);
+	js_newscript(J, F, env);
 }
 
 int js_ploadbin(js_State *J, const char *source, int length)

@@ -270,6 +270,7 @@ enum {
 };
 int js_dumpscript(js_State *J, int idx, char **buf, int flags);
 void js_loadbin(js_State *J, const char *source, int length);
+void js_loadbinE(js_State *J, const char *source, int length);
 int js_ploadbin(js_State *J, const char *source, int length);
 void js_loadbinfile(js_State *J, const char *filename);
 int js_ploadbinfile(js_State *J, const char *filename);
