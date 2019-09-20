@@ -20,7 +20,16 @@
   Useful for userdatas, as an alternative to `js_ref`.
 * Added `js_arefb`, `js_aunrefb` convenience facility to internally create one-way reference between objects.   
   This prevents garbage collection of referenced object, until its parent is collected.
-* Increased ASCII strings performance.
+* Increased ASCII string performance.  
+  `js_pushstring` analyzes input to catch ASCII stings to apply performance optimizations. 
+* Added `js_pushstringu` function to specifically push unicode or ASCII encoded string, skipping string analyze.
+* Added `js_pushconst`, `js_pushconstu`, functions to push constant strings that are never copied or deallocated by the mujs,  
+  unless it is interned by object conversion.
+* Removed `js_pushliteral` from the public api, replaced by the `js_pushconst`.  
+  _`js_pushliteral` is now meant to push interned strings only._
+* Added `js_isstringu` function to check if string is unicode encoded.
+* Added `js_getstrlen` function to return proper string length taking into account its encoding.
+* Added `js_getstrsize` function to return actual string size.
 * Improved property look up performance.  
   Should now also save the property order, however, indexes are not handled somehow special.
 * Added `js_resolvetypename` to fetch proper instance type name from the constructor.
@@ -33,7 +42,8 @@
 * Added `JSCOMPILER` and `JSONPARSER` cmake definitions to exclude js compiler from the compiled binary.  
   Use `-DJSCOMPILER=0` to disable js compiler. Results in smaller binary.
 * Converted API documentaion into markdown format.
-* Reverted f5de9d4. It was affecting precompiled scripts size in a negative way.    
+* Reverted f5de9d4. It was affecting precompiled scripts size in a negative way.  
   However, it's probably still a packer issue, so this might get back at some point.
 * Added `-d` flag to mujs executable, which can be used to strip debug information from precompiled script, to produce smaller binary.
 * Added `js_loadbinE` to load precompiled script with predefined environment variables (push object, call func).
+* Added `js_pushlstringu` function to specifically push unicode or ASCII encoded string of specified _size_.

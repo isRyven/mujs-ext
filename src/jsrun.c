@@ -145,6 +145,26 @@ void js_pushstringu(js_State *J, const char *v, int isunicode)
 	++TOP;
 }
 
+void js_pushlstringu(js_State *J, const char *v, int n, int isunicode)
+{
+	js_Value *value = STACK + TOP;
+	js_StringNode *strnode;
+	unsigned int len, size = 0;
+	CHECKSTACK(1);
+	value->type = JS_TMEMSTR;
+	if (isunicode)
+		len = utfnlen2(v, n, &size);
+	else 
+		size = len = n;
+	strnode = jsV_newmemstring(J, v, size);
+	strnode->length = len;
+	strnode->size = size;
+	strnode->isunicode = isunicode;
+	value->u.string.u.ptr8 = strnode->string;
+	value->u.string.isunicode = isunicode;
+	++TOP;
+}
+
 // automatically detects string encoding
 void js_pushstring(js_State *J, const char *v)
 {
