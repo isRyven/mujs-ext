@@ -14,7 +14,7 @@
 #define MAX_OSPATH 256
 #define ISPATHSEP(X) ((X) == '\\' || (X) == '/' || (X) == PATH_SEPARATOR)
 
-const char* getbasename(const char *path)
+const char* getbasename(const char *path, int stripExt)
 {
 	static char base[MAX_OSPATH] = { 0 };
 	int length = (int)strlen(path) - 1;
@@ -28,6 +28,10 @@ const char* getbasename(const char *path)
 	// strip trailing slashes
 	while (length > 0 && (ISPATHSEP(base[length])))
 		base[length--] = '\0';
+	if (stripExt) {
+		char *ext = strrchr(base, '.');
+		*ext = 0;
+	}
 	return base;
 }
 
@@ -390,7 +394,7 @@ int main(int argc, char **argv)
 					int size = js_dumpscript(J, -1, &buf, stripdebug ? JS_BINSTRIPDEBUG : 0);
 					if (buf) {
 						char outpath[MAX_OSPATH] = { 0 };
-						sprintf(outpath, "./%s.out", getbasename(argv[i]));
+						sprintf(outpath, "./%s.jsbin", getbasename(argv[i], 1));
 						FILE *fd = fopen(outpath, "wb");
 						if (!fd) {
 							perror(argv[i]);
