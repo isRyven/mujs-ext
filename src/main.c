@@ -415,7 +415,7 @@ int main(int argc, char **argv)
 						break;
 					}
 				} else {
-					printf("could not load script\n");
+					printf("%s\n", js_tostring(J, -1));
 					status = 1;
 					break;
 				}

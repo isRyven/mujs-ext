@@ -280,7 +280,7 @@ static const char* js_loadfuncbin_string(js_State *J, js_Buffer *sb, hashtable_t
 		hashtable_insert(strings, (hashtable_count(strings) + 1), &addr);
 		return str;
 	} else if (id == 0)
-		return "";
+		return jsS_sentinel.string;
 	return *(const char**)hashtable_find(strings, id);
 }
 

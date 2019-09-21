@@ -84,6 +84,7 @@ const char *js_intern(js_State *J, const char *s);
 void jsS_dumpstrings(js_State *J);
 void jsS_freestrings(js_State *J);
 
+
 struct js_StringNode
 {
 	js_StringNode *left, *right;
@@ -93,7 +94,7 @@ struct js_StringNode
 	int isunicode;
 	char string[1];
 };
-
+extern js_StringNode jsS_sentinel;
 #define js_tostringnode(ptr) ((js_StringNode*)(ptr - soffsetof(js_StringNode, string)))
 
 /* parser interned string literals */
