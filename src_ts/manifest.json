@@ -1,0 +1,6 @@
+{
+	"version": "0.0.1",
+	"name": "typescript-compiler",
+	"description": "lightweight, standalone typescript compiler",
+	"bootstrap": "bootstrap.js"
+}

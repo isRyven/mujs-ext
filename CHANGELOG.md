@@ -40,10 +40,12 @@
 * Added `js_loadbinfile`, `js_ploadbinfile` functions to load precompiled scirpt binary from the file. 
 * Added `-c` and `-f` flags to mujs executable, which can be used to precompile and load scripts.
 * Added `JSCOMPILER` and `JSONPARSER` cmake definitions to exclude js compiler from the compiled binary.  
-  Use `-DJSCOMPILER=0` to disable js compiler. Results in smaller binary.
+  Use `-DJSCOMPILER=0` variable to disable js compiler. Results in smaller binary.
 * Converted API documentaion into markdown format.
 * Reverted f5de9d4. It was affecting precompiled scripts size in a negative way.  
   However, it's probably still a packer issue, so this might get back at some point.
 * Added `-d` flag to mujs executable, which can be used to strip debug information from precompiled script, to produce smaller binary.
 * Added `js_loadbinE` to load precompiled script with predefined environment variables (push object, call func).
 * Added `js_pushlstringu` function to specifically push unicode or ASCII encoded string of specified _size_.
+* Added standalone TypeScript compiler.  
+  Use `-DTSCOMPILER=1` variable to enable TypeScript compiler.

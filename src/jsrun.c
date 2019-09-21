@@ -974,7 +974,7 @@ unsigned int js_getstrsize(js_State *J, int idx)
 void js_getproperty(js_State *J, int idx, const char *name)
 {
 	// quick length lookup
-	if (!strcmp(name, "length") && js_isstring(J, idx)) {
+	if (js_isstring(J, idx) && !strcmp(name, "length")) {
 		js_pushnumber(J, (double)jsV_getstrlen(J, js_tovalue(J, idx)));
 		return;
 	}
