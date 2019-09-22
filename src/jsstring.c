@@ -95,14 +95,14 @@ static void Sp_charAt(js_State *J)
 	char buf[UTFmax + 1];
 	const char *s = checkstring(J, 0);
 	int pos = js_tointeger(J, 1);
-	js_Object *obj = js_toobject(J, 0);
-	js_StringNode *strnode = jsU_ptrtostrnode(obj->u.string.u.ptr8);
-	if (pos >= (int)strnode->length) {
+	int len = js_getstrlen(J, 0);
+	int isunicode = js_isstringu(J, 0);
+	if (pos < 0 || pos >= len) {
 		js_pushconst(J, "");
 		return;
 	}
-	if (!obj->u.string.isunicode) {
-		js_pushshrstr(J, obj->u.string.u.ptr8 + pos, 1);
+	if (!isunicode) {
+		js_pushshrstr(J, s + pos, 1);
 		return;	
 	}
 	rune = js_runeat(J, s, pos);
@@ -118,15 +118,15 @@ static void Sp_charCodeAt(js_State *J)
 {
 	Rune rune;
 	const char *s = checkstring(J, 0);
+	int len = js_getstrlen(J, 0);
 	int pos = js_tointeger(J, 1);
-	js_Object *obj = js_toobject(J, 0);
-	js_StringNode *strnode = jsU_ptrtostrnode(obj->u.string.u.ptr8);
-	if (pos >= (int)strnode->length) {
+	int isunicode = js_isstringu(J, 0);
+	if (pos < 0 || pos >= len) {
 		js_pushnumber(J, NAN);
 		return;
 	}
-	if (!obj->u.string.isunicode) {
-		js_pushnumber(J, (double)*(obj->u.string.u.ptr8 + pos));
+	if (!isunicode) {
+		js_pushnumber(J, (double)*(s + pos));
 		return;
 	}
  	rune = js_runeat(J, s, pos);
