@@ -1,3 +1,5 @@
+#include <ctype.h>
+
 #include "jsi.h"
 #include "jsvalue.h"
 #include "jsbuiltin.h"
@@ -16,7 +18,7 @@ static const char *checkstring(js_State *J, int idx)
 {
 	if (!js_iscoercible(J, idx))
 		js_typeerror(J, "string function called on null or undefined");
-	return js_tostring(J, idx);
+	return jsV_tostring(J, stackidx(J, idx));
 }
 
 int js_runeat(js_State *J, const char *s, int i)
@@ -77,67 +79,64 @@ static void Sp_toString(js_State *J)
 {
 	js_Object *self = js_toobject(J, 0);
 	if (self->type != JS_CSTRING) js_typeerror(J, "not a string");
-	js_pushliteral(J, self->u.s.u.ptr8);
+	js_pushliteral(J, self->u.string.u.ptr8);
 }
 
 static void Sp_valueOf(js_State *J)
 {
 	js_Object *self = js_toobject(J, 0);
 	if (self->type != JS_CSTRING) js_typeerror(J, "not a string");
-	js_pushliteral(J, self->u.s.u.ptr8);
+	js_pushliteral(J, self->u.string.u.ptr8);
 }
 
 static void Sp_charAt(js_State *J)
 {
+	Rune rune;
 	char buf[UTFmax + 1];
 	const char *s = checkstring(J, 0);
 	int pos = js_tointeger(J, 1);
 	js_Object *obj = js_toobject(J, 0);
-	js_StringNode *strnode = js_tostringnode(obj->u.s.u.ptr8);
-	if (pos >= (int)strnode->length)
-	{
+	js_StringNode *strnode = jsU_ptrtostrnode(obj->u.string.u.ptr8);
+	if (pos >= (int)strnode->length) {
 		js_pushconst(J, "");
 		return;
 	}
-	if (obj->u.s.isunicode) {
-		Rune rune = js_runeat(J, s, pos);
-		if (rune > 0) {
-			buf[runetochar(buf, &rune)] = 0;
-			js_pushstringu(J, buf, 1);
-		} else {
-			js_pushconst(J, "");
-		}
-	} else {
-		js_pushshrstr(J, obj->u.s.u.ptr8 + pos, 1);
+	if (!obj->u.string.isunicode) {
+		js_pushshrstr(J, obj->u.string.u.ptr8 + pos, 1);
+		return;	
 	}
+	rune = js_runeat(J, s, pos);
+	if (rune == 0) {
+		js_pushconst(J, "");
+		return;
+	}
+	buf[runetochar(buf, &rune)] = 0;
+	js_pushstringu(J, buf, 1);
 }
 
 static void Sp_charCodeAt(js_State *J)
 {
+	Rune rune;
 	const char *s = checkstring(J, 0);
 	int pos = js_tointeger(J, 1);
 	js_Object *obj = js_toobject(J, 0);
-	js_StringNode *strnode = js_tostringnode(obj->u.s.u.ptr8);
-	if (pos >= (int)strnode->length)
-	{
+	js_StringNode *strnode = jsU_ptrtostrnode(obj->u.string.u.ptr8);
+	if (pos >= (int)strnode->length) {
 		js_pushnumber(J, NAN);
 		return;
 	}
-	if (obj->u.s.isunicode) {
-		Rune rune = js_runeat(J, s, pos);
-		if (rune > 0)
-			js_pushnumber(J, rune);
-		else
-			js_pushnumber(J, NAN);
-	} else {
-		js_pushnumber(J, (double)*(obj->u.s.u.ptr8 + pos));
+	if (!obj->u.string.isunicode) {
+		js_pushnumber(J, (double)*(obj->u.string.u.ptr8 + pos));
+		return;
 	}
+ 	rune = js_runeat(J, s, pos);
+	js_pushnumber(J, rune > 0 ? rune : NAN);
 }
 
 static void Sp_concat(js_State *J)
 {
-	int i, top = js_gettop(J);
-	int n;
+	int i, n, top = js_gettop(J);
+	int isunicode = 0;
 	char * volatile out;
 	const char *s;
 
@@ -145,7 +144,8 @@ static void Sp_concat(js_State *J)
 		return;
 
 	s = checkstring(J, 0);
-	n = strlen(s);
+	n = js_getstrsize(J, 0);
+	isunicode = js_isstringu(J, 0);
 	out = js_malloc(J, n + 1);
 	strcpy(out, s);
 
@@ -156,31 +156,46 @@ static void Sp_concat(js_State *J)
 
 	for (i = 1; i < top; ++i) {
 		s = js_tostring(J, i);
-		n += strlen(s);
+		n += js_getstrsize(J, i);
+		if (js_isstringu(J, i)) 
+			isunicode = 1;
 		out = js_realloc(J, out, n + 1);
 		strcat(out, s);
 	}
-
-	js_pushstring(J, out);
+	js_pushlstringu(J, out, n, isunicode); 
 	js_endtry(J);
 	js_free(J, out);
 }
 
 static void Sp_indexOf(js_State *J)
 {
+	Rune rune;
 	const char *haystack = checkstring(J, 0);
 	const char *needle = js_tostring(J, 1);
-	int pos = js_tointeger(J, 2);
-	int len = strlen(needle);
-	int k = 0;
-	Rune rune;
-	while (*haystack) {
-		if (k >= pos && !strncmp(haystack, needle, len)) {
-			js_pushnumber(J, k);
+	const char *ptr;
+	int k = 0, len, isunicode;
+	int pos = M_CLAMP(js_tointeger(J, 2), 0, (int)js_getstrlen(J, 0));
+	if (!needle[0]) {
+		js_pushnumber(J, pos);
+		return;
+	}
+	len = js_getstrsize(J, 1);
+	isunicode = js_isstringu(J, 0);
+	if (isunicode) {
+		while (*haystack) {
+			if (k >= pos && !strncmp(haystack, needle, len)) {
+				js_pushnumber(J, k);
+				return;
+			}
+			haystack += chartorune(&rune, haystack);
+			++k;
+		}
+	} else {
+		ptr = strstr(haystack + pos, needle);
+		if (ptr) {
+			js_pushnumber(J, ptr - haystack);
 			return;
 		}
-		haystack += chartorune(&rune, haystack);
-		++k;
 	}
 	js_pushnumber(J, -1);
 }
@@ -189,17 +204,40 @@ static void Sp_lastIndexOf(js_State *J)
 {
 	const char *haystack = checkstring(J, 0);
 	const char *needle = js_tostring(J, 1);
-	int pos = js_isdefined(J, 2) ? js_tointeger(J, 2) : (int)strlen(haystack);
-	int len = strlen(needle);
-	int k = 0, last = -1;
-	Rune rune;
-	while (*haystack && k <= pos) {
-		if (!strncmp(haystack, needle, len))
-			last = k;
-		haystack += chartorune(&rune, haystack);
-		++k;
+	const char *result, *ptr;
+	int k = 0, last = -1, len, isunicode;
+	int pos = M_CLAMP(js_tointeger(J, 2), 0, (int)js_getstrlen(J, 0));
+	if (!needle[0]) {
+		js_pushnumber(J, pos);
+		return;
 	}
-	js_pushnumber(J, last);
+	len = js_getstrsize(J, 1);
+	isunicode = js_isstringu(J, 0);
+	Rune rune;
+	if (isunicode) {
+		while (*haystack && k <= pos) {
+			if (!strncmp(haystack, needle, len))
+				last = k;
+			haystack += chartorune(&rune, haystack);
+			++k;
+		}
+		js_pushnumber(J, last);
+	} else {
+		result = NULL;
+	    for (ptr = haystack; k <= pos;) {
+	        ptr = strstr(ptr, needle);
+	        if (ptr == NULL)
+	            break;
+	        result = ptr;
+	        ptr++;
+	        k = (result - haystack);
+	    }
+	    if (result && k <= pos) {
+			js_pushnumber(J, k);
+			return;
+		}
+	}
+	js_pushnumber(J, -1);
 }
 
 static void Sp_localeCompare(js_State *J)
@@ -216,6 +254,7 @@ static void Sp_slice(js_State *J)
 	int len = js_getstrlen(J, 0);
 	int s = js_tointeger(J, 1);
 	int e = js_isdefined(J, 2) ? js_tointeger(J, 2) : len;
+	int isunicode = js_isstringu(J, 0);
 
 	s = s < 0 ? s + len : s;
 	e = e < 0 ? e + len : e;
@@ -223,15 +262,25 @@ static void Sp_slice(js_State *J)
 	s = s < 0 ? 0 : s > len ? len : s;
 	e = e < 0 ? 0 : e > len ? len : e;
 
-	if (s < e) {
-		ss = js_utfidxtoptr(str, s);
-		ee = js_utfidxtoptr(ss, e - s);
+	if (isunicode) {
+		if (s < e) {
+			ss = js_utfidxtoptr(str, s);
+			ee = js_utfidxtoptr(ss, e - s);
+		} else {
+			ss = js_utfidxtoptr(str, e);
+			ee = js_utfidxtoptr(ss, s - e);
+		}
 	} else {
-		ss = js_utfidxtoptr(str, e);
-		ee = js_utfidxtoptr(ss, s - e);
+		if (s < e) {
+			ss = str + s;
+			ee = ss + (e - s);
+		} else {
+			ss = str + e;
+			ee = ss + (s - e);
+		}
 	}
 
-	js_pushlstring(J, ss, ee - ss);
+	js_pushlstringu(J, ss, ee - ss, isunicode);
 }
 
 static void Sp_substring(js_State *J)
@@ -241,19 +290,30 @@ static void Sp_substring(js_State *J)
 	int len = js_getstrlen(J, 0);
 	int s = js_tointeger(J, 1);
 	int e = js_isdefined(J, 2) ? js_tointeger(J, 2) : len;
+	int isunicode = js_isstringu(J, 0);
 
 	s = s < 0 ? 0 : s > len ? len : s;
 	e = e < 0 ? 0 : e > len ? len : e;
 
-	if (s < e) {
-		ss = js_utfidxtoptr(str, s);
-		ee = js_utfidxtoptr(ss, e - s);
+	if (isunicode) {
+		if (s < e) {
+			ss = js_utfidxtoptr(str, s);
+			ee = js_utfidxtoptr(ss, e - s);
+		} else {
+			ss = js_utfidxtoptr(str, e);
+			ee = js_utfidxtoptr(ss, s - e);
+		}		
 	} else {
-		ss = js_utfidxtoptr(str, e);
-		ee = js_utfidxtoptr(ss, s - e);
+		if (s < e) {
+			ss = str + s;
+			ee = ss + (e - s);
+		} else {
+			ss = str + e;
+			ee = ss + (s - e);
+		}
 	}
 
-	js_pushlstring(J, ss, ee - ss);
+	js_pushlstringu(J, ss, ee - ss, isunicode);
 }
 
 // ES5.1 (Annex B) added for compatibility reasons
@@ -265,41 +325,64 @@ static void Sp_substr(js_State *J)
 	int e = 0;
 	int s = js_tointeger(J, 1);
 	int l = js_isdefined(J, 2) ? js_tointeger(J, 2) : len;
+	int isunicode = js_isstringu(J, 0);
 
 	s = s < 0 ? 0 : s > len ? len : s;
 	l = l < 0 ? 0 : l > len ? len : l;
 	e = s + l;
 	e = e < 0 ? 0 : e > len ? len : e;
 
-	if (s < e) {
-		ss = js_utfidxtoptr(str, s);
-		ee = js_utfidxtoptr(ss, e - s);
+	if (isunicode) {
+		if (s < e) {
+			ss = js_utfidxtoptr(str, s);
+			ee = js_utfidxtoptr(ss, e - s);
+		} else {
+			ss = js_utfidxtoptr(str, e);
+			ee = js_utfidxtoptr(ss, s - e);
+		}
 	} else {
-		ss = js_utfidxtoptr(str, e);
-		ee = js_utfidxtoptr(ss, s - e);
+		if (s < e) {
+			ss = str + s;
+			ee = ss + (e - s);
+		} else {
+			ss = str + e;
+			ee = ss + (s - e);
+		}
 	}
 
-	js_pushlstring(J, ss, ee - ss);
+	js_pushlstringu(J, ss, ee - ss, isunicode);
 }
 
 static void Sp_toLowerCase(js_State *J)
 {
 	const char *src = checkstring(J, 0);
-	char *dst = js_malloc(J, UTFmax * strlen(src) + 1);
-	const char *s = src;
-	char *d = dst;
+	const char *s;
+	char *dst, *d;
+	int isunicode = js_isstringu(J, 0);
+	int i, len = js_getstrsize(J, 0);
 	Rune rune;
-	while (*s) {
-		s += chartorune(&rune, s);
-		rune = tolowerrune(rune);
-		d += runetochar(d, &rune);
+	if (isunicode) {
+		len = UTFmax * len;
+		dst = js_malloc(J, len + 1);
+		s = src;
+		d = dst;
+		while (*s) {
+			s += chartorune(&rune, s);
+			rune = tolowerrune(rune);
+			d += runetochar(d, &rune);
+		}
+		*d = 0;
+	} else {
+		dst = js_malloc(J, len + 1);
+		for (i = 0; i < len; ++i) {
+			dst[i] = tolower(src[i]);
+		}
 	}
-	*d = 0;
 	if (js_try(J)) {
 		js_free(J, dst);
 		js_throw(J);
 	}
-	js_pushstring(J, dst);
+	js_pushlstringu(J, dst, len, isunicode);
 	js_endtry(J);
 	js_free(J, dst);
 }
@@ -307,21 +390,33 @@ static void Sp_toLowerCase(js_State *J)
 static void Sp_toUpperCase(js_State *J)
 {
 	const char *src = checkstring(J, 0);
-	char *dst = js_malloc(J, UTFmax * strlen(src) + 1);
-	const char *s = src;
-	char *d = dst;
+	const char *s;
+	char *dst, *d;
+	int isunicode = js_isstringu(J, 0);
+	int i, len = js_getstrsize(J, 0);
 	Rune rune;
-	while (*s) {
-		s += chartorune(&rune, s);
-		rune = toupperrune(rune);
-		d += runetochar(d, &rune);
+	if (isunicode) {
+		len = UTFmax * len;
+		dst = js_malloc(J, len + 1);
+		s = src;
+		d = dst;
+		while (*s) {
+			s += chartorune(&rune, s);
+			rune = toupperrune(rune);
+			d += runetochar(d, &rune);
+		}
+		*d = 0;
+	} else {
+		dst = js_malloc(J, len + 1);
+		for (i = 0; i < len; ++i) {
+			dst[i] = toupper(src[i]);
+		}
 	}
-	*d = 0;
 	if (js_try(J)) {
 		js_free(J, dst);
 		js_throw(J);
 	}
-	js_pushstring(J, dst);
+	js_pushlstringu(J, dst, len, isunicode);
 	js_endtry(J);
 	js_free(J, dst);
 }
@@ -334,14 +429,15 @@ static int istrim(int c)
 
 static void Sp_trim(js_State *J)
 {
-	const char *s, *e;
-	s = checkstring(J, 0);
+	const char *e;
+	const char *s = checkstring(J, 0);
+	int isunicode = js_isstringu(J, 0);
 	while (istrim(*s))
 		++s;
-	e = s + strlen(s);
+	e = s + js_getstrsize(J, 0);
 	while (e > s && istrim(e[-1]))
 		--e;
-	js_pushlstring(J, s, e - s);
+	js_pushlstringu(J, s, e - s, isunicode);
 }
 
 static void S_fromCharCode(js_State *J)
@@ -350,7 +446,12 @@ static void S_fromCharCode(js_State *J)
 	Rune c;
 	char *s, *p;
 
-	s = p = js_malloc(J, (top-1) * UTFmax + 1);
+	if (top == 1) {
+		js_pushconst(J, "");
+		return;
+	}
+
+	s = p = js_malloc(J, (top - 1) * UTFmax + 1);
 
 	if (js_try(J)) {
 		js_free(J, s);
@@ -397,7 +498,7 @@ static void Sp_match(js_State *J)
 
 	len = 0;
 	a = text;
-	e = text + strlen(text);
+	e = text + js_getstrsize(J, 0);
 	while (a <= e) {
 		if (js_doregexec(J, re->prog, a, &m, a > text ? REG_NOTBOL : 0))
 			break;
@@ -558,7 +659,7 @@ static void Sp_replace_string(js_State *J)
 		js_copy(J, 0);
 		return;
 	}
-	n = strlen(needle);
+	n = (int)js_getstrsize(J, 1);
 
 	if (js_iscallable(J, 2)) {
 		js_copy(J, 2);
@@ -628,7 +729,7 @@ static void Sp_split_regexp(js_State *J)
 	js_newarray(J);
 	len = 0;
 
-	e = text + strlen(text);
+	e = text + js_getstrsize(J, 0);
 
 	/* splitting the empty string */
 	if (e == text) {
@@ -681,7 +782,7 @@ static void Sp_split_string(js_State *J)
 
 	js_newarray(J);
 
-	n = strlen(sep);
+	n = js_getstrsize(J, 1);
 
 	/* empty string */
 	if (n == 0) {
@@ -724,8 +825,8 @@ static void Sp_split(js_State *J)
 
 void jsB_initstring(js_State *J)
 {
-	J->String_prototype->u.s.u.ptr8 = "";
-	J->String_prototype->u.s.isunicode = 0;
+	J->String_prototype->u.string.u.ptr8 = jsS_sentinel.string;
+	J->String_prototype->u.string.isunicode = 0;
 
 	js_pushobject(J, J->String_prototype);
 	{

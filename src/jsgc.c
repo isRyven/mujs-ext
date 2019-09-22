@@ -74,7 +74,7 @@ static void jsG_markenvironment(js_State *J, int mark, js_Environment *env)
 static void jsG_markproperty(js_State *J, int mark, js_Property *node)
 {
 	if (node->value.type == JS_TMEMSTR) {
-		js_StringNode *strnode = js_tostringnode(node->value.u.string.u.ptr8);
+		js_StringNode *strnode = jsU_ptrtostrnode(node->value.u.string.u.ptr8);
 		if (strnode->level != mark)
 			strnode->level = mark;
 	}
@@ -115,7 +115,7 @@ static void jsG_markstack(js_State *J, int mark)
 	int n = J->top;
 	while (n--) {
 		if (v->type == JS_TMEMSTR) {
-			js_StringNode *strnode = js_tostringnode(v->u.string.u.ptr8);
+			js_StringNode *strnode = jsU_ptrtostrnode(v->u.string.u.ptr8);
 			if (strnode->level != mark)
 				strnode->level = mark;
 		}

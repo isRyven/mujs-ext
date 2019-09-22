@@ -240,7 +240,7 @@ static void jsB_readFile(js_State *J)
 		js_error(J, "readFile: cannot seek in file '%s': %s", filename, geterrstr(errno));
 	}
 
-	s = malloc(n + 1);
+	s = malloc(n);
 	if (!s) {
 		fclose(f);
 		js_error(J, "readFile: out of memory");
@@ -252,9 +252,8 @@ static void jsB_readFile(js_State *J)
 		fclose(f);
 		js_error(J, "readFile: cannot read file '%s': %s", filename, geterrstr(errno));
 	}
-	s[n] = 0;
-
-	js_pushstring(J, s);
+	
+	js_pushlstring(J, s, n);
 	free(s);
 	fclose(f);
 }

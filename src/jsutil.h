@@ -13,7 +13,27 @@
 #define BITSET(s, i, val) (s |= val << i)
 #define BITGET(s, i) ((s >> i) & 0x1)
 
-uint64_t js_tostrhash(const char *str);
+#define jsU_valisstr(v) ( \
+	v->type == JS_TSHRSTR || \
+	v->type == JS_TMEMSTR || \
+	v->type == JS_TLITSTR || \
+	v->type == JS_TCONSTSTR || \
+	(v->type == JS_TOBJECT && v->u.object->type == JS_CSTRING))
+#define jsU_ptrtostrnode(p) \
+	((js_StringNode*)(p - soffsetof(js_StringNode, string)))
+#define jsU_valtostrnode(v) \
+	((v->type == JS_TMEMSTR || v->type == JS_TLITSTR) ? \
+		jsU_ptrtostrnode(v->u.string.u.ptr8) : \
+		(v->type == JS_TOBJECT && v->u.object->type == JS_CSTRING) ? \
+			jsU_ptrtostrnode(v->u.object->u.string.u.ptr8) : &jsS_sentinel)
+#define jsU_valtocstr(v) \
+	((const char*)(v->type==JS_TSHRSTR ? v->u.string.u.shrstr : \
+		(v->type == JS_TMEMSTR || v->type == JS_TLITSTR || v->type==JS_TCONSTSTR) ? \
+			v->u.string.u.ptr8 : \
+				(v->type == JS_TOBJECT && v->u.object->type == JS_CSTRING) ? \
+					v->u.object->u.string.u.ptr8 : ""))
+
+uint64_t jsU_tostrhash(const char *str);
 
 /* String buffer */
 

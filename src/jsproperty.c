@@ -5,7 +5,7 @@ static js_Property *newproperty(js_State *J, js_Object *obj, const char *name)
 {
 	js_Property node; 
 	node.name = js_intern(J, name); 
-	node.hash = js_tostrhash(name);
+	node.hash = jsU_tostrhash(name);
 	node.atts = 0;
 	node.value.type = JS_TUNDEFINED;
 	node.value.u.number = 0;
@@ -18,7 +18,7 @@ static js_Property *newproperty(js_State *J, js_Object *obj, const char *name)
 
 static js_Property *addproperty(js_State *J, js_Object *obj, const char *name)
 {
-	js_Property *property = hashtable_find(obj->properties, js_tostrhash(name));
+	js_Property *property = hashtable_find(obj->properties, jsU_tostrhash(name));
 	if (property)
 		return property;
 	return newproperty(J, obj, name);
@@ -49,12 +49,12 @@ js_Object *jsV_newobject(js_State *J, enum js_Class type, js_Object *prototype)
 
 js_Property *jsV_getownproperty(js_State *J, js_Object *obj, const char *name)
 {
-	return (js_Property*)hashtable_find(obj->properties, js_tostrhash(name));
+	return (js_Property*)hashtable_find(obj->properties, jsU_tostrhash(name));
 }
 
 js_Property *jsV_getpropertyx(js_State *J, js_Object *obj, const char *name, int *own)
 {
-	uint64_t hash = js_tostrhash(name);
+	uint64_t hash = jsU_tostrhash(name);
 	*own = 1;
 	do {
 		js_Property *ref = (js_Property*)hashtable_find(obj->properties, hash);
@@ -68,7 +68,7 @@ js_Property *jsV_getpropertyx(js_State *J, js_Object *obj, const char *name, int
 
 js_Property *jsV_getproperty(js_State *J, js_Object *obj, const char *name)
 {
-	uint64_t hash = js_tostrhash(name);
+	uint64_t hash = jsU_tostrhash(name);
 	do {
 		js_Property *ref = (js_Property*)hashtable_find(obj->properties, hash);
 		if (ref)
@@ -80,7 +80,7 @@ js_Property *jsV_getproperty(js_State *J, js_Object *obj, const char *name)
 
 static js_Property *jsV_getenumproperty(js_State *J, js_Object *obj, const char *name)
 {
-	uint64_t hash = js_tostrhash(name);
+	uint64_t hash = jsU_tostrhash(name);
 	do {
 		js_Property *ref = (js_Property*)hashtable_find(obj->properties, hash);
 		if (ref && !(ref->atts & JS_DONTENUM))
@@ -93,7 +93,7 @@ static js_Property *jsV_getenumproperty(js_State *J, js_Object *obj, const char 
 js_Property *jsV_setproperty(js_State *J, js_Object *obj, const char *name)
 {
 	if (!obj->extensible) {
-		js_Property *property = (js_Property*)hashtable_find(obj->properties, js_tostrhash(name));
+		js_Property *property = (js_Property*)hashtable_find(obj->properties, jsU_tostrhash(name));
 		if (J->strict && !property)
 			js_typeerror(J, "object is non-extensible");
 		return property;
@@ -103,7 +103,7 @@ js_Property *jsV_setproperty(js_State *J, js_Object *obj, const char *name)
 
 void jsV_delproperty(js_State *J, js_Object *obj, const char *name)
 {
-	freeproperty(J, obj, js_tostrhash(name));
+	freeproperty(J, obj, jsU_tostrhash(name));
 }
 
 /* Flatten hierarchy of enumerable properties into an iterator object */
@@ -147,7 +147,7 @@ js_Object *jsV_newiterator(js_State *J, js_Object *obj, int own)
 		io->u.iter.head = itflatten(J, obj);
 	}
 	if (obj->type == JS_CSTRING) {
-		node = js_tostringnode(obj->u.s.u.ptr8);
+		node = jsU_ptrtostrnode(obj->u.string.u.ptr8);
 		js_Iterator *tail = io->u.iter.head;
 		if (tail)
 			while (tail->next)
@@ -184,7 +184,7 @@ const char *jsV_nextiterator(js_State *J, js_Object *io)
 		if (jsV_getproperty(J, io->u.iter.target, name))
 			return name;
 		if (io->u.iter.target->type == JS_CSTRING) {
-			node = js_tostringnode(io->u.iter.target->u.s.u.ptr8);
+			node = jsU_ptrtostrnode(io->u.iter.target->u.string.u.ptr8);
 			if (js_isarrayindex(J, name, &k) && k < (int)node->length)
 				return name;
 		}

@@ -207,7 +207,7 @@ void js_pushliteral(js_State *J, const char *v)
 {
 	js_StringNode *node;
 	CHECKSTACK(1);
-	node = js_tostringnode(v);
+	node = jsU_ptrtostrnode(v);
 	STACK[TOP].type = JS_TLITSTR;
 	STACK[TOP].u.string.u.ptr8 = v;
 	STACK[TOP].u.string.isunicode = node->isunicode;
@@ -254,7 +254,7 @@ void js_currentfunction(js_State *J)
 
 /* Read values from stack */
 
-static js_Value *stackidx(js_State *J, int idx)
+js_Value *stackidx(js_State *J, int idx)
 {
 	static js_Value undefined = { {0}, {0}, JS_TUNDEFINED };
 	idx = idx < 0 ? TOP + idx : BOT + idx;
@@ -280,7 +280,14 @@ int js_iscoercible(js_State *J, int idx) { js_Value *v = stackidx(J, idx); retur
 int js_isstringu(js_State *J, int idx)
 {
 	js_Value *value = stackidx(J, idx); 
-	return (value->type == JS_TLITSTR || value->type == JS_TMEMSTR || value->type == JS_TCONSTSTR) ? value->u.string.isunicode : 0;
+	return (
+		value->type == JS_TSHRSTR ? 0 :
+			(value->type == JS_TLITSTR ||
+			value->type == JS_TMEMSTR || 
+			value->type == JS_TCONSTSTR) ? value->u.string.isunicode : 
+				(value->type == JS_TOBJECT && value->u.object->type == JS_CSTRING) ? 
+					value->u.object->u.string.isunicode : 0
+		);
 }
 
 int js_iscallable(js_State *J, int idx)
@@ -598,17 +605,17 @@ static int jsR_hasproperty(js_State *J, js_Object *obj, const char *name)
 	}
 
 	else if (obj->type == JS_CSTRING) {
-		strnode = js_tostringnode(obj->u.s.u.ptr8);
+		strnode = jsU_ptrtostrnode(obj->u.string.u.ptr8);
 		if (!strcmp(name, "length")) {
 			js_pushnumber(J, strnode->length);
 			return 1;
 		}
 		if (js_isarrayindex(J, name, &k)) {
 			if (k >= 0 && k < (int)strnode->length) {
-				if (obj->u.s.isunicode)
-					js_pushrune(J, js_runeat(J, obj->u.s.u.ptr8, k));
+				if (obj->u.string.isunicode)
+					js_pushrune(J, js_runeat(J, obj->u.string.u.ptr8, k));
 				else 
-					js_pushlstring(J, obj->u.s.u.ptr8 + k, 1);
+					js_pushlstring(J, obj->u.string.u.ptr8 + k, 1);
  				return 1;
  			}
 		}
@@ -689,7 +696,7 @@ static void jsR_setproperty(js_State *J, js_Object *obj, const char *name)
 		if (!strcmp(name, "length"))
 			goto readonly;
 		if (js_isarrayindex(J, name, &k)) {
-			strnode = js_tostringnode(obj->u.s.u.ptr8);
+			strnode = jsU_ptrtostrnode(obj->u.string.u.ptr8);
 			if (k >= 0 && k < (int)strnode->length)
 				goto readonly;
 		}
@@ -762,7 +769,7 @@ static void jsR_defproperty(js_State *J, js_Object *obj, const char *name,
 		if (!strcmp(name, "length"))
 			goto readonly;
 		if (js_isarrayindex(J, name, &k)) {
-			strnode = js_tostringnode(obj->u.s.u.ptr8);
+			strnode = jsU_ptrtostrnode(obj->u.string.u.ptr8);
 			if (k >= 0 && k < (int)strnode->length)
 				goto readonly;
 		}
@@ -826,7 +833,7 @@ static int jsR_delproperty(js_State *J, js_Object *obj, const char *name)
 		if (!strcmp(name, "length"))
 			goto dontconf;
 		if (js_isarrayindex(J, name, &k)) {
-			strnode = js_tostringnode(obj->u.s.u.ptr8);
+			strnode = jsU_ptrtostrnode(obj->u.string.u.ptr8);
 			if (k >= 0 && k < (int)strnode->length)
  				goto dontconf;
 		}

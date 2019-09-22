@@ -95,7 +95,6 @@ struct js_StringNode
 	char string[1];
 };
 extern js_StringNode jsS_sentinel;
-#define js_tostringnode(ptr) ((js_StringNode*)(ptr - soffsetof(js_StringNode, string)))
 
 /* parser interned string literals */
 void js_pushliteral(js_State *J, const char *v);
@@ -250,5 +249,7 @@ struct js_State
 	int exitbufset;
 	js_Jumpbuf exitbuf;
 };
+
+js_Value *stackidx(js_State *J, int idx);
 
 #endif

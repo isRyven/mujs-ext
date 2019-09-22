@@ -143,7 +143,11 @@ var rootModule = new Module(__filename, {
 				stat: __stat,
 				utimes: __utimes,
 				print: __print,
-				readFile: __readFile,
+				readFile: function(path) {
+					if (__existsInternal(path))
+						return __readInternalFile(path);
+					return __readFile(path);
+				},
 				writeFile: __writeFile,
 				remove: __remove,
 				mkdir: __mkdir,
