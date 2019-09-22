@@ -90,7 +90,7 @@ struct js_Object
 	union {
 		int boolean;
 		double number;
-		js_String s;
+		js_String string;
 		struct {
 			int length;
 		} a;

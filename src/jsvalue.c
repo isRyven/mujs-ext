@@ -4,9 +4,6 @@
 #include "jsvalue.h"
 #include "utf.h"
 
-#define JSV_ISSTRING(v) (v->type==JS_TSHRSTR || v->type==JS_TMEMSTR || v->type==JS_TLITSTR || v->type==JS_TCONSTSTR)
-#define JSV_TOSTRING(v) (v->type==JS_TSHRSTR ? v->u.string.u.shrstr : (v->type==JS_TLITSTR || v->type==JS_TMEMSTR || v->type==JS_TCONSTSTR) ? v->u.string.u.ptr8 : "")
-
 int jsV_numbertointeger(double n)
 {
 	if (n == 0) return 0;
@@ -349,9 +346,9 @@ static js_Object *jsV_newstring(js_State *J, const char *v)
 {
 	js_StringNode *strnode;
 	js_Object *obj = jsV_newobject(J, JS_CSTRING, J->String_prototype);
-	strnode = js_tostringnode(js_intern(J, v));
-	obj->u.s.u.ptr8 = strnode->string;
-	obj->u.s.isunicode = strnode->isunicode;
+	strnode = jsU_ptrtostrnode(js_intern(J, v));
+	obj->u.string.u.ptr8 = strnode->string;
+	obj->u.string.isunicode = strnode->isunicode;
 	return obj;
 }
 
@@ -362,23 +359,23 @@ static js_Object *jsV_newstringfrom(js_State *J, js_Value *v)
 	js_Object *obj = jsV_newobject(J, JS_CSTRING, J->String_prototype);
 	switch (v->type) {
 		case JS_TSHRSTR:
-			obj->u.s.u.ptr8 = js_intern(J, v->u.string.u.shrstr);
-			obj->u.s.isunicode = 0;
+			obj->u.string.u.ptr8 = js_intern(J, v->u.string.u.shrstr);
+			obj->u.string.isunicode = 0;
 			break;
 		// already interned string
 		case JS_TLITSTR:
-			obj->u.s.u.ptr8 = v->u.string.u.ptr8;
-			obj->u.s.isunicode = v->u.string.isunicode;
+			obj->u.string.u.ptr8 = v->u.string.u.ptr8;
+			obj->u.string.isunicode = v->u.string.isunicode;
 			break;
 		case JS_TCONSTSTR:
 		case JS_TMEMSTR:
-			strnode = js_tostringnode(js_intern(J, v->u.string.u.ptr8));
-			obj->u.s.u.ptr8 = strnode->string;
-			obj->u.s.isunicode = strnode->isunicode;
+			strnode = jsU_ptrtostrnode(js_intern(J, v->u.string.u.ptr8));
+			obj->u.string.u.ptr8 = strnode->string;
+			obj->u.string.isunicode = strnode->isunicode;
 			break;
 		default:
-			obj->u.s.u.ptr8 = js_intern(J, jsV_tostring(J, v));
-			obj->u.s.isunicode = 0;
+			obj->u.string.u.ptr8 = js_intern(J, jsV_tostring(J, v));
+			obj->u.string.isunicode = 0;
 			break;
 	}
 	return obj;
@@ -665,8 +662,8 @@ int js_equal(js_State *J)
 	js_Value *y = js_tovalue(J, -1);
 
 retry:
-	if (JSV_ISSTRING(x) && JSV_ISSTRING(y))
-		return !strcmp((const char*)JSV_TOSTRING(x), (const char*)JSV_TOSTRING(y));
+	if (jsU_valisstr(x) && jsU_valisstr(y))
+		return !strcmp(jsU_valtocstr(x), jsU_valtocstr(y));
 	if (x->type == y->type) {
 		if (x->type == JS_TUNDEFINED) return 1;
 		if (x->type == JS_TNULL) return 1;
@@ -679,9 +676,9 @@ retry:
 	if (x->type == JS_TNULL && y->type == JS_TUNDEFINED) return 1;
 	if (x->type == JS_TUNDEFINED && y->type == JS_TNULL) return 1;
 
-	if (x->type == JS_TNUMBER && JSV_ISSTRING(y))
+	if (x->type == JS_TNUMBER && jsU_valisstr(y))
 		return x->u.number == jsV_tonumber(J, y);
-	if (JSV_ISSTRING(x) && y->type == JS_TNUMBER)
+	if (jsU_valisstr(x) && y->type == JS_TNUMBER)
 		return jsV_tonumber(J, x) == y->u.number;
 
 	if (x->type == JS_TBOOLEAN) {
@@ -694,11 +691,11 @@ retry:
 		y->u.number = y->u.boolean;
 		goto retry;
 	}
-	if ((JSV_ISSTRING(x) || x->type == JS_TNUMBER) && y->type == JS_TOBJECT) {
+	if ((jsU_valisstr(x) || x->type == JS_TNUMBER) && y->type == JS_TOBJECT) {
 		jsV_toprimitive(J, y, JS_HNONE);
 		goto retry;
 	}
-	if (x->type == JS_TOBJECT && (JSV_ISSTRING(y) || y->type == JS_TNUMBER)) {
+	if (x->type == JS_TOBJECT && (jsU_valisstr(y) || y->type == JS_TNUMBER)) {
 		jsV_toprimitive(J, x, JS_HNONE);
 		goto retry;
 	}
@@ -711,8 +708,8 @@ int js_strictequal(js_State *J)
 	js_Value *x = js_tovalue(J, -2);
 	js_Value *y = js_tovalue(J, -1);
 
-	if (JSV_ISSTRING(x) && JSV_ISSTRING(y))
-		return !strcmp(JSV_TOSTRING(x), JSV_TOSTRING(y));
+	if (jsU_valisstr(x) && jsU_valisstr(y))
+		return !strcmp(jsU_valtocstr(x), jsU_valtocstr(y));
 
 	if (x->type != y->type) return 0;
 	if (x->type == JS_TUNDEFINED) return 1;
@@ -731,7 +728,8 @@ int jsV_getstrlen(js_State *J, js_Value *v)
 			return strlen(v->u.string.u.shrstr);
 		case JS_TLITSTR:
 		case JS_TMEMSTR:
-			node = js_tostringnode(v->u.string.u.ptr8);
+		case JS_TOBJECT:
+			node = jsU_valtostrnode(v);
 			return node->length;
 		case JS_TCONSTSTR:
 			return utflen(v->u.string.u.ptr8);
@@ -749,7 +747,8 @@ int jsV_getstrsize(js_State *J, js_Value *v)
 			return strlen(v->u.string.u.shrstr);
 		case JS_TLITSTR:
 		case JS_TMEMSTR:
-			node = js_tostringnode(v->u.string.u.ptr8);
+		case JS_TOBJECT:
+			node = jsU_valtostrnode(v);
 			return node->size;
 		case JS_TCONSTSTR:
 			return strlen(v->u.string.u.ptr8);
@@ -771,7 +770,7 @@ const char* jsV_resolvetypename(js_State *J, js_Value *value, const char* keyNam
         return S_EITHER_STR(S_EITHER_STR(obj->u.f.function->name, keyName), "function");
     if (obj->type == JS_COBJECT) {
         js_Object *current = obj;
-        uint64_t hash = js_tostrhash("constructor");
+        uint64_t hash = jsU_tostrhash("constructor");
         do {
         	js_Property *prop = (js_Property*)hashtable_find(current->properties, hash);
         	if (prop) 

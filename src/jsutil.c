@@ -279,7 +279,7 @@ const char* jsbuf_gets(js_State *J, js_Buffer *buf)
 	return start;
 }
 
-uint64_t js_tostrhash(const char *str)
+uint64_t jsU_tostrhash(const char *str)
 {
 	uint64_t hash = 5381;
 	int c;

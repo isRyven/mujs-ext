@@ -171,7 +171,7 @@ static void O_getOwnPropertyNames(js_State *J)
 	}
 
 	if (obj->type == JS_CSTRING) {
-		node = js_tostringnode(obj->u.s.u.ptr8);
+		node = jsU_ptrtostrnode(obj->u.string.u.ptr8);
 		js_pushconst(J, "length");
 		js_setindex(J, -2, i++);
 		for (k = 0; k < (int)node->length; ++k) {
@@ -345,7 +345,7 @@ static void O_keys(js_State *J)
 		i = 0;
 
 	if (obj->type == JS_CSTRING) {
-		node = js_tostringnode(obj->u.s.u.ptr8);
+		node = jsU_ptrtostrnode(obj->u.string.u.ptr8);
 		for (k = 0; k < (int)node->length; ++k) {
 			js_pushnumber(J, k);
 			js_setindex(J, -2, i++);
