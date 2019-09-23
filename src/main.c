@@ -245,13 +245,6 @@ static const char *require_js =
 	"}\n"
 	"require.cache = Object.create(null);\n"
 ;
-
-static const char *stacktrace_js =
-	"Error.prototype.toString = function() {\n"
-	"if (this.stackTrace) return this.name + ': ' + this.message + this.stackTrace;\n"
-	"return this.name + ': ' + this.message;\n"
-	"};\n"
-;
 #endif
 
 static int eval_print(js_State *J, const char *source)
@@ -371,7 +364,6 @@ int main(int argc, char **argv)
 	js_setglobal(J, "quit");
 #ifndef JS_COMPILER_DISABLED
 	js_dostring(J, require_js);
-	js_dostring(J, stacktrace_js);
 #endif
 	if (xoptind == argc) {
 		interactive = 1;
