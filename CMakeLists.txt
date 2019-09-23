@@ -94,9 +94,9 @@ if(TSCOMPILER)
 	target_include_directories(tsc PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include/mujs")
 	target_include_directories(tsc PRIVATE "${PROJECT_SOURCE_DIR}/deps/nozip/src")
 
-	file(GLOB_RECURSE ASSETS_DATA "${PROJECT_SOURCE_DIR}/src_ts/*" )
+	file(GLOB_RECURSE ASSETS_DATA "${PROJECT_SOURCE_DIR}/src_tsc/*" )
 	list(FILTER ASSETS_DATA EXCLUDE REGEX "\\.js$")
-	file(GLOB_RECURSE ASSETS_SCRIPTS "${PROJECT_SOURCE_DIR}/src_ts/*.js" )
+	file(GLOB_RECURSE ASSETS_SCRIPTS "${PROJECT_SOURCE_DIR}/src_tsc/*.js" )
 
 	set(ASSETS_IMG_TEMP_DIR "${CMAKE_CURRENT_BINARY_DIR}/assets_temp")
 	set(ASSETS_IMG_PATH "${CMAKE_CURRENT_BINARY_DIR}/assets_data.pak")
