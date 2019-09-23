@@ -65,12 +65,7 @@ function getJSSystem(ts) {
         return directories;
     }
     function directoryExists(path) {
-        try {
-            var st = JSHost.stat(path);
-            return st.isDirectory === true;
-        } catch (err) {
-            return false;
-        }
+        return JSHost.exists(path, 1);
     }
     return {
         newLine: newLine,
@@ -80,14 +75,7 @@ function getJSSystem(ts) {
         readFile: JSHost.readFile,
         writeFile: JSHost.writeFile,
         resolvePath: function (s) { return s; },
-        fileExists: function(path) {
-            try {
-                var st = JSHost.stat(path);
-                return st.isFile === true;
-            } catch (err) {
-                return false;
-            }
-        },
+        fileExists: JSHost.exists,
         deleteFile: JSHost.remove,
         getModifiedTime: function(path) {
             var st = JSHost.stat(path);

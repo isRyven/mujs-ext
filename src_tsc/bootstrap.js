@@ -153,7 +153,8 @@ var rootModule = new Module(__filename, {
 				mkdir: __mkdir,
 				getcwd: __getcwd,
 				getenv: __getenv,
-				exit: __exit
+				exit: __exit,
+				exists: __exists
 			}
 		})
 	}
