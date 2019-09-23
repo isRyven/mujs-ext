@@ -445,6 +445,24 @@ static void jsB_utimes(js_State *J)
 	js_pushundefined(J);
 }	
 
+static void jsB_exists(js_State *J)
+{
+	int status;
+	struct stat st;
+	const char *path = js_tostring(J, 1);
+	int checkdir = js_isdefined(J, 2) ? js_toboolean(J, 2) : 0;
+	if (!path[0])
+		js_error(J, "exists: expected valid path");
+	status = stat(path, &st);
+	if (status) {
+		js_pushboolean(J, 0);
+	} else if (checkdir) {
+		js_pushboolean(J, (st.st_mode & S_IFMT) == S_IFDIR);
+	} else {
+		js_pushboolean(J, 1);
+	}
+}
+
 int main(int argc, char *argv[]) {
 	int i, status = 0;
 	const char *bootstrap_name;
@@ -453,7 +471,6 @@ int main(int argc, char *argv[]) {
 	js_State *J = js_newstate(NULL, NULL, 0);
 	typedef int (*host_action_t)(js_State *J);
 	host_action_t host_action;
-
 	size_t zsize = nozip_size_mem(__pak_data_img, __pak_data_img_length);
 	nozip_t *zip = malloc(zsize); 
 	if (!zip || !nozip_read_mem(zip, __pak_data_img, __pak_data_img_length)) {
@@ -549,6 +566,9 @@ int main(int argc, char *argv[]) {
 
 	js_newcfunction(J, jsB_utimes, "__utimes", 1);
 	js_setproperty(J, -2, "__utimes");
+
+	js_newcfunction(J, jsB_exists, "__exists", 1);
+	js_setproperty(J, -2, "__exists");
 
 	js_pushstring(J, bootstrap_name);
 	js_setproperty(J, -2, "__filename");
