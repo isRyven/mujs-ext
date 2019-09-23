@@ -206,7 +206,8 @@ static void Sp_lastIndexOf(js_State *J)
 	const char *needle = js_tostring(J, 1);
 	const char *result, *ptr;
 	int k = 0, last = -1, len, isunicode;
-	int pos = M_CLAMP(js_tointeger(J, 2), 0, (int)js_getstrlen(J, 0));
+	int hlen = js_getstrlen(J, 0);
+	int pos = js_isdefined(J, 2) ? M_CLAMP(js_tointeger(J, 2), 0, hlen) : hlen;
 	if (!needle[0]) {
 		js_pushnumber(J, pos);
 		return;
