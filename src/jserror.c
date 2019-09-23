@@ -8,6 +8,7 @@
 static int jsB_stacktrace(js_State *J, int skip)
 {
 	char buf[256];
+	js_StringBuffer *sb = NULL;
 	int n = J->tracetop - skip;
 	if (n <= 0)
 		return 0;
@@ -22,10 +23,14 @@ static int jsB_stacktrace(js_State *J, int skip)
 				snprintf(buf, sizeof buf, "\n\tat %s:%d", S_EITHER_STR(file, "??"), line);
 		} else
 			snprintf(buf, sizeof buf, "\n\tat %s (%s)", S_EITHER_STR(name, "??"), S_EITHER_STR(file, "??"));
-		js_pushstring(J, buf);
-		if (n < J->tracetop - skip)
-			js_concat(J);
+		js_puts(J, &sb, buf);
 	}
+	if (sb) {
+		js_pushlstring(J, sb->s, sb->n);
+		js_free(J, sb);
+	}
+	else 
+		js_pushconst(J, "");
 	return 1;
 }
 
