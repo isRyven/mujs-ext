@@ -3,7 +3,7 @@
 
 /* Use an AA-tree to quickly look up interned strings. */
 
-js_StringNode jsS_sentinel = { &jsS_sentinel, &jsS_sentinel, 0, 0, 0, 0, ""};
+js_StringNode jsS_sentinel = { &jsS_sentinel, &jsS_sentinel, 0, 0, 0, 0, 0, 0, ""};
 
 static js_StringNode *jsS_newstringnode(js_State *J, const char *string, const char **result)
 {
@@ -14,6 +14,7 @@ static js_StringNode *jsS_newstringnode(js_State *J, const char *string, const c
 	node->level = 1;
 	node->size = n;
 	node->length = len;
+	node->isattached = 0;
 	node->isunicode = n != len;
 	memcpy(node->string, string, n + 1);
 	return *result = node->string, node;

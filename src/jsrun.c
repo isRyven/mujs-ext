@@ -70,6 +70,8 @@ js_StringNode *jsV_newmemstring(js_State *J, const char *s, int n)
 	v->size = n;
 	v->length = n;
 	v->isunicode = 0;
+	v->gcmark = 0;
+	v->isattached = 0;
 	J->gcstr = v;
 	++J->gccounter;
 	return v;

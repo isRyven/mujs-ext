@@ -49,6 +49,12 @@ static void jsG_freeobject(js_State *J, js_Object *obj)
 		jsG_freeiterator(J, obj->u.iter.head);
 	if (obj->type == JS_CUSERDATA && obj->u.user.finalize)
 		obj->u.user.finalize(J, obj->u.user.data);
+	if (obj->type == JS_CSTRING) {
+		js_StringNode *strnode = jsU_ptrtostrnode(obj->u.string.u.ptr8);
+		if (strnode->isattached && !(--strnode->level))
+			strnode->isattached = 0;
+	}
+
 	js_free(J, obj);
 }
 
@@ -75,8 +81,8 @@ static void jsG_markproperty(js_State *J, int mark, js_Property *node)
 {
 	if (node->value.type == JS_TMEMSTR) {
 		js_StringNode *strnode = jsU_ptrtostrnode(node->value.u.string.u.ptr8);
-		if (strnode->level != mark)
-			strnode->level = mark;
+		if (strnode->gcmark != mark)
+			strnode->gcmark = mark;
 	}
 	if (node->value.type == JS_TOBJECT && node->value.u.object->gcmark != mark)
 		jsG_markobject(J, mark, node->value.u.object);
@@ -116,8 +122,8 @@ static void jsG_markstack(js_State *J, int mark)
 	while (n--) {
 		if (v->type == JS_TMEMSTR) {
 			js_StringNode *strnode = jsU_ptrtostrnode(v->u.string.u.ptr8);
-			if (strnode->level != mark)
-				strnode->level = mark;
+			if (strnode->gcmark != mark)
+				strnode->gcmark = mark;
 		}
 		if (v->type == JS_TOBJECT && v->u.object->gcmark != mark)
 			jsG_markobject(J, mark, v->u.object);
@@ -215,7 +221,7 @@ void js_gc(js_State *J, int report)
 	prevnextstr = &J->gcstr;
 	for (str = J->gcstr; str; str = nextstr) {
 		nextstr = str->right;
-		if (str->level != mark) {
+		if (str->gcmark != mark && !str->isattached) {
 			*prevnextstr = nextstr;
 			js_free(J, str);
 			++gstr;

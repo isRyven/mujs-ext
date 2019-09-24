@@ -362,14 +362,21 @@ static js_Object *jsV_newstringfrom(js_State *J, js_Value *v)
 			obj->u.string.u.ptr8 = js_intern(J, v->u.string.u.shrstr);
 			obj->u.string.isunicode = 0;
 			break;
-		// already interned string
 		case JS_TLITSTR:
+			// already interned string, just set up referernce
 			obj->u.string.u.ptr8 = v->u.string.u.ptr8;
 			obj->u.string.isunicode = v->u.string.isunicode;
 			break;
 		case JS_TCONSTSTR:
-		case JS_TMEMSTR:
 			strnode = jsU_ptrtostrnode(js_intern(J, v->u.string.u.ptr8));
+			obj->u.string.u.ptr8 = strnode->string;
+			obj->u.string.isunicode = strnode->isunicode;
+			break;
+		case JS_TMEMSTR:
+			// attach mem string to object, to avoid interning
+			strnode = jsU_ptrtostrnode(v->u.string.u.ptr8);
+			strnode->isattached = 1;
+			strnode->level++;
 			obj->u.string.u.ptr8 = strnode->string;
 			obj->u.string.isunicode = strnode->isunicode;
 			break;
