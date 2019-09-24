@@ -135,9 +135,9 @@ static void Sp_charCodeAt(js_State *J)
 
 static void Sp_concat(js_State *J)
 {
+	js_StringBuffer *sb = NULL;
 	int i, n, top = js_gettop(J);
 	int isunicode = 0;
-	char * volatile out;
 	const char *s;
 
 	if (top == 1)
@@ -146,25 +146,24 @@ static void Sp_concat(js_State *J)
 	s = checkstring(J, 0);
 	n = js_getstrsize(J, 0);
 	isunicode = js_isstringu(J, 0);
-	out = js_malloc(J, n + 1);
-	strcpy(out, s);
+
+	js_putb(J, &sb, s, n);
 
 	if (js_try(J)) {
-		js_free(J, out);
+		js_free(J, sb);
 		js_throw(J);
 	}
 
 	for (i = 1; i < top; ++i) {
 		s = js_tostring(J, i);
-		n += js_getstrsize(J, i);
+		n = js_getstrsize(J, i);
 		if (js_isstringu(J, i)) 
 			isunicode = 1;
-		out = js_realloc(J, out, n + 1);
-		strcat(out, s);
+		js_putb(J, &sb, s, n);
 	}
-	js_pushlstringu(J, out, n, isunicode); 
+	js_pushlstringu(J, sb->s, sb->n, isunicode); 
 	js_endtry(J);
-	js_free(J, out);
+	js_free(J, sb);
 }
 
 static void Sp_indexOf(js_State *J)

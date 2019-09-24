@@ -42,6 +42,7 @@ typedef struct js_StringBuffer { int n, m; char s[64]; } js_StringBuffer;
 void js_putc(js_State *J, js_StringBuffer **sbp, int c);
 void js_puts(js_State *J, js_StringBuffer **sb, const char *s);
 void js_putm(js_State *J, js_StringBuffer **sb, const char *s, const char *e);
+void js_putb(js_State *J, js_StringBuffer **sbp, const char *data, int size);
 
 /* Octet buffer */
 

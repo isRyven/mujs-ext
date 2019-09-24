@@ -145,23 +145,31 @@ void js_pushstringu(js_State *J, const char *v, int isunicode)
 	++TOP;
 }
 
-void js_pushlstringu(js_State *J, const char *v, int n, int isunicode)
+void js_pushlstringu(js_State *J, const char *str, int n, int isunicode)
 {
 	js_Value *value = STACK + TOP;
 	js_StringNode *strnode;
 	unsigned int len, size = 0;
 	CHECKSTACK(1);
-	value->type = JS_TMEMSTR;
-	if (isunicode)
-		len = utfnlen2(v, n, &size);
-	else 
-		size = len = n;
-	strnode = jsV_newmemstring(J, v, size);
-	strnode->length = len;
-	strnode->size = size;
-	strnode->isunicode = isunicode;
-	value->u.string.u.ptr8 = strnode->string;
-	value->u.string.isunicode = isunicode;
+	if (!isunicode && (n <= soffsetof(js_Value, type))) {
+		char *s = value->u.string.u.shrstr;
+		memcpy(s, str, n);
+		s[n] = 0;
+		value->type = JS_TSHRSTR;
+	} else {
+		if (isunicode) {
+			len = utfnlen2(str, n, &size);
+		} else {
+			size = len = n;
+		}
+		strnode = jsV_newmemstring(J, str, size);
+		strnode->length = len;
+		strnode->size = size;
+		strnode->isunicode = isunicode;
+		value->type = JS_TMEMSTR;
+		value->u.string.u.ptr8 = strnode->string;
+		value->u.string.isunicode = isunicode;
+	}
 	++TOP;
 }
 
@@ -174,33 +182,32 @@ void js_pushstring(js_State *J, const char *v)
 void js_pushlstring(js_State *J, const char *v, int n)
 {
 	unsigned int len;
-    js_StringNode *strnode;
-    js_Value *value = STACK + TOP;
-    const unsigned char *ptr = (const unsigned char*)v;
+	js_StringNode *strnode;
+	js_Value *value = STACK + TOP;
+	const unsigned char *ptr = (const unsigned char*)v;
+	int isunicode;
 	CHECKSTACK(1);
 	for (len = 0; *ptr && *ptr < Runeself && len < (unsigned int)n; ++len, ++ptr) {}
-    if (*ptr == 0 && (len <= soffsetof(js_Value, type))) {
+	isunicode = (*ptr != 0 && n != (int)len); 
+	if (!isunicode && (len <= soffsetof(js_Value, type))) {
 		char *s = value->u.string.u.shrstr;
 		memcpy(s, v, len);
 		s[len] = 0;
 		value->type = JS_TSHRSTR;
-    } else {
-    	unsigned int size = len;
-    	int isunicode = *ptr != 0;
+	} else {
+		unsigned int size = len;
 		value->type = JS_TMEMSTR;
 		if (isunicode) {
 			len += utfnlen2((const char*)ptr, n - size, &size);
 		}
-    	strnode = jsV_newmemstring(J, v, size);
-    	if (!strnode)
-			js_error(J, "could not allocate string");
+		strnode = jsV_newmemstring(J, v, size);
 		strnode->length = len;
 		strnode->size = size;
 		strnode->isunicode = isunicode;
 		STACK[TOP].u.string.u.ptr8 = strnode->string;
 		STACK[TOP].u.string.isunicode = isunicode;
-    }
-    ++TOP;
+	}
+	++TOP;
 }
 
 void js_pushliteral(js_State *J, const char *v)
