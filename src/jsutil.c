@@ -2,35 +2,35 @@
 
 static inline uint16_t __bswap16(uint16_t x)
 {
-    return (x >> 8) | (x << 8);
+	return (x >> 8) | (x << 8);
 }
 
 static inline uint32_t __bswap32(uint32_t v)
 {
-    return ((v & 0xff000000) >> 24) | ((v & 0x00ff0000) >>  8) |
-        ((v & 0x0000ff00) <<  8) | ((v & 0x000000ff) << 24);
+	return ((v & 0xff000000) >> 24) | ((v & 0x00ff0000) >>  8) |
+		((v & 0x0000ff00) <<  8) | ((v & 0x000000ff) << 24);
 }
 
 static inline uint64_t __bswap64(uint64_t v)
 {
-    return ((v & ((uint64_t)0xff << (7 * 8))) >> (7 * 8)) | 
-        ((v & ((uint64_t)0xff << (6 * 8))) >> (5 * 8)) | 
-        ((v & ((uint64_t)0xff << (5 * 8))) >> (3 * 8)) | 
-        ((v & ((uint64_t)0xff << (4 * 8))) >> (1 * 8)) | 
-        ((v & ((uint64_t)0xff << (3 * 8))) << (1 * 8)) | 
-        ((v & ((uint64_t)0xff << (2 * 8))) << (3 * 8)) | 
-        ((v & ((uint64_t)0xff << (1 * 8))) << (5 * 8)) | 
-        ((v & ((uint64_t)0xff << (0 * 8))) << (7 * 8));
+	return ((v & ((uint64_t)0xff << (7 * 8))) >> (7 * 8)) | 
+		((v & ((uint64_t)0xff << (6 * 8))) >> (5 * 8)) | 
+		((v & ((uint64_t)0xff << (5 * 8))) >> (3 * 8)) | 
+		((v & ((uint64_t)0xff << (4 * 8))) >> (1 * 8)) | 
+		((v & ((uint64_t)0xff << (3 * 8))) << (1 * 8)) | 
+		((v & ((uint64_t)0xff << (2 * 8))) << (3 * 8)) | 
+		((v & ((uint64_t)0xff << (1 * 8))) << (5 * 8)) | 
+		((v & ((uint64_t)0xff << (0 * 8))) << (7 * 8));
 }
 
 // https://stackoverflow.com/a/24844826
 static unsigned __power_ceil(unsigned x) 
 {
-    if (x <= 1) return 1;
-    int power = 2;
-    x--;
-    while (x >>= 1) power <<= 1;
-    return power;
+	if (x <= 1) return 1;
+	int power = 2;
+	x--;
+	while (x >>= 1) power <<= 1;
+	return power;
 }
 
 typedef union { 
@@ -42,16 +42,27 @@ typedef union {
 
 /* Dynamically grown string buffer */
 
+static void* js_strbuf_realloc(js_State *J, js_StringBuffer *sb, int newsize)
+{
+	if (!sb) {
+		sb = js_malloc(J, ((int)sizeof(sb->s) >= newsize) ? (int)sizeof(*sb) : (soffsetof(js_StringBuffer, s) + newsize));
+		sb->n = 0;
+		sb->m = ((int)sizeof(sb->s) >= newsize) ? (int)sizeof(sb->s) : newsize;
+	} else if (newsize >= sb->m) {
+		int size = sb->m * 3 / 2;
+		if (size > newsize)
+			newsize = size;
+		sb = js_realloc(J, sb, newsize + soffsetof(js_StringBuffer, s));
+		sb->m = newsize;
+	}
+	return sb;
+}
+
 void js_putc(js_State *J, js_StringBuffer **sbp, int c)
 {
 	js_StringBuffer *sb = *sbp;
-	if (!sb) {
-		sb = js_malloc(J, sizeof *sb);
-		sb->n = 0;
-		sb->m = sizeof sb->s;
-		*sbp = sb;
-	} else if (sb->n == sb->m) {
-		sb = js_realloc(J, sb, (sb->m *= 2) + soffsetof(js_StringBuffer, s));
+	if (!sb || sb->n >= sb->m) {
+		sb = js_strbuf_realloc(J, sb, sb ? (sb->n + 1) : 1);
 		*sbp = sb;
 	}
 	sb->s[sb->n++] = c;
@@ -69,6 +80,17 @@ void js_putm(js_State *J, js_StringBuffer **sb, const char *s, const char *e)
 		js_putc(J, sb, *s++);
 }
 
+void js_putb(js_State *J, js_StringBuffer **sbp, const char *data, int size)
+{
+	js_StringBuffer *sb = *sbp;
+	if (!sb || (sb->n + size) >= sb->m) {
+		sb = js_strbuf_realloc(J, sb, sb ? (sb->n + size) : size);
+		*sbp = sb;
+	}
+	memcpy(sb->s + sb->n, data, size);
+	sb->n += size;
+}
+
 /* Dynamically grown octet buffer */
 
 #define MIN_BUF_SIZE 64
@@ -82,10 +104,10 @@ static void jsbuf_realloc(js_State *J, js_Buffer *buf, unsigned int newsize)
 		buf->m = size;
 	} else if(newsize >= buf->m) {
 		size_t size = buf->m * 3 / 2;
-	   	if (size > newsize)
-            newsize = size;
-        buf->data = js_realloc(J, buf->data, newsize);
-        buf->m = newsize;
+		if (size > newsize)
+			newsize = size;
+		buf->data = js_realloc(J, buf->data, newsize);
+		buf->m = newsize;
 	}
 }
 
