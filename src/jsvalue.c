@@ -328,14 +328,14 @@ const char *jsV_tostring(js_State *J, js_Value *v)
 
 /* Objects */
 
-static js_Object *jsV_newboolean(js_State *J, int v)
+js_Object *jsV_newboolean(js_State *J, int v)
 {
 	js_Object *obj = jsV_newobject(J, JS_CBOOLEAN, J->Boolean_prototype);
 	obj->u.boolean = v;
 	return obj;
 }
 
-static js_Object *jsV_newnumber(js_State *J, double v)
+js_Object *jsV_newnumber(js_State *J, double v)
 {
 	js_Object *obj = jsV_newobject(J, JS_CNUMBER, J->Number_prototype);
 	obj->u.number = v;
@@ -353,7 +353,7 @@ static js_Object *jsV_newstring(js_State *J, const char *v)
 }
 
 // create new string object from meta value
-static js_Object *jsV_newstringfrom(js_State *J, js_Value *v)
+js_Object *jsV_newstringfrom(js_State *J, js_Value *v)
 {
 	js_StringNode *strnode;
 	js_Object *obj = jsV_newobject(J, JS_CSTRING, J->String_prototype);
@@ -669,6 +669,7 @@ int js_equal(js_State *J)
 	js_Value *y = js_tovalue(J, -1);
 
 retry:
+	// compares any type of strings, even object
 	if (jsU_valisstr(x) && jsU_valisstr(y))
 		return !strcmp(jsU_valtocstr(x), jsU_valtocstr(y));
 	if (x->type == y->type) {
@@ -683,9 +684,9 @@ retry:
 	if (x->type == JS_TNULL && y->type == JS_TUNDEFINED) return 1;
 	if (x->type == JS_TUNDEFINED && y->type == JS_TNULL) return 1;
 
-	if (x->type == JS_TNUMBER && jsU_valisstr(y))
+	if (x->type == JS_TNUMBER && jsV_isstring(y))
 		return x->u.number == jsV_tonumber(J, y);
-	if (jsU_valisstr(x) && y->type == JS_TNUMBER)
+	if (jsV_isstring(x) && y->type == JS_TNUMBER)
 		return jsV_tonumber(J, x) == y->u.number;
 
 	if (x->type == JS_TBOOLEAN) {
@@ -698,11 +699,11 @@ retry:
 		y->u.number = y->u.boolean;
 		goto retry;
 	}
-	if ((jsU_valisstr(x) || x->type == JS_TNUMBER) && y->type == JS_TOBJECT) {
+	if ((jsV_isstring(x) || x->type == JS_TNUMBER) && y->type == JS_TOBJECT) {
 		jsV_toprimitive(J, y, JS_HNONE);
 		goto retry;
 	}
-	if (x->type == JS_TOBJECT && (jsU_valisstr(y) || y->type == JS_TNUMBER)) {
+	if (x->type == JS_TOBJECT && (jsV_isstring(y) || y->type == JS_TNUMBER)) {
 		jsV_toprimitive(J, x, JS_HNONE);
 		goto retry;
 	}
@@ -715,7 +716,8 @@ int js_strictequal(js_State *J)
 	js_Value *x = js_tovalue(J, -2);
 	js_Value *y = js_tovalue(J, -1);
 
-	if (jsU_valisstr(x) && jsU_valisstr(y))
+	// compares primitive strings only
+	if (jsV_isstring(x) && jsV_isstring(y))
 		return !strcmp(jsU_valtocstr(x), jsU_valtocstr(y));
 
 	if (x->type != y->type) return 0;

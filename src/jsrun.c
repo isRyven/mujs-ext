@@ -86,6 +86,13 @@ void js_pushvalue(js_State *J, js_Value v)
 	++TOP;
 }
 
+void js_pushvalue2(js_State *J, js_Value *v)
+{
+	CHECKSTACK(1);
+	STACK[TOP] = *v;
+	++TOP;
+}
+
 void js_pushundefined(js_State *J)
 {
 	CHECKSTACK(1);
@@ -288,15 +295,7 @@ int js_isobject(js_State *J, int idx) { return stackidx(J, idx)->type == JS_TOBJ
 int js_iscoercible(js_State *J, int idx) { js_Value *v = stackidx(J, idx); return v->type != JS_TUNDEFINED && v->type != JS_TNULL; }
 int js_isstringu(js_State *J, int idx)
 {
-	js_Value *value = stackidx(J, idx); 
-	return (
-		value->type == JS_TSHRSTR ? 0 :
-			(value->type == JS_TLITSTR ||
-			value->type == JS_TMEMSTR || 
-			value->type == JS_TCONSTSTR) ? value->u.string.isunicode : 
-				(value->type == JS_TOBJECT && value->u.object->type == JS_CSTRING) ? 
-					value->u.object->u.string.isunicode : 0
-		);
+	return jsU_valisstru(stackidx(J, idx));
 }
 
 int js_iscallable(js_State *J, int idx)
@@ -398,6 +397,22 @@ const char *js_tostring(js_State *J, int idx)
 js_Object *js_toobject(js_State *J, int idx)
 {
 	return jsV_toobject(J, stackidx(J, idx));
+}
+
+js_Object *jsV_toobjectP(js_State *J, js_Value *v)
+{
+	switch (v->type) {
+	default:
+	case JS_TSHRSTR: return J->String_prototype;
+	case JS_TUNDEFINED: js_typeerror(J, "cannot convert undefined to object");
+	case JS_TNULL: js_typeerror(J, "cannot convert null to object");
+	case JS_TBOOLEAN: return J->Boolean_prototype;
+	case JS_TNUMBER: return J->Number_prototype;
+	case JS_TLITSTR:
+	case JS_TCONSTSTR:
+	case JS_TMEMSTR: return J->String_prototype;
+	case JS_TOBJECT: return v->u.object;
+	}
 }
 
 void js_toprimitive(js_State *J, int idx, int hint)
@@ -602,7 +617,6 @@ static void js_pushrune(js_State *J, Rune rune)
 
 static int jsR_hasproperty(js_State *J, js_Object *obj, const char *name)
 {
-	js_StringNode *strnode;
 	js_Property *ref;
 	int k;
 
@@ -613,18 +627,20 @@ static int jsR_hasproperty(js_State *J, js_Object *obj, const char *name)
 		}
 	}
 
-	else if (obj->type == JS_CSTRING) {
-		strnode = jsU_ptrtostrnode(obj->u.string.u.ptr8);
+	else if (obj->type == JS_CSTRING && obj != J->String_prototype) {
 		if (!strcmp(name, "length")) {
-			js_pushnumber(J, strnode->length);
+			int length = jsU_ptrtostrnode(obj->u.string.u.ptr8)->length;
+			js_pushnumber(J, length);
 			return 1;
 		}
 		if (js_isarrayindex(J, name, &k)) {
-			if (k >= 0 && k < (int)strnode->length) {
-				if (obj->u.string.isunicode)
+			int length = jsU_ptrtostrnode(obj->u.string.u.ptr8)->length;
+			int isunicode = obj->u.string.isunicode; 
+			if (k >= 0 && k < length) {
+				if (isunicode)
 					js_pushrune(J, js_runeat(J, obj->u.string.u.ptr8, k));
 				else 
-					js_pushlstring(J, obj->u.string.u.ptr8 + k, 1);
+					js_pushlstringu(J, obj->u.string.u.ptr8 + k, 1, 0);
  				return 1;
  			}
 		}
@@ -677,6 +693,30 @@ static void jsR_getproperty(js_State *J, js_Object *obj, const char *name)
 {
 	if (!jsR_hasproperty(J, obj, name))
 		js_pushundefined(J);
+}
+
+static void jsV_getproperty2(js_State *J, js_Value *val, const char *name)
+{
+	int k;
+	if (jsU_valisstr(val)) {
+		if (!strcmp(name, "length")) {
+			js_pushnumber(J, jsV_getstrlen(J, val));
+			return;
+		}
+		if (js_isarrayindex(J, name, &k)) {
+			int len = jsV_getstrlen(J, val);
+			int isunicode = jsU_valisstru(val);
+			const char *cstr = jsU_valtocstr(val);
+			if (k >= 0 && k < (int)len) {
+				if (isunicode)
+					js_pushrune(J, js_runeat(J, cstr, k));
+				else 
+					js_pushlstringu(J, cstr + k, 1, 0);
+ 				return;
+ 			}
+		}
+	}
+	jsR_getproperty(J, jsV_toobjectP(J, val), name);
 }
 
 static void jsR_setproperty(js_State *J, js_Object *obj, const char *name)
@@ -1606,10 +1646,21 @@ static void jsR_run(js_State *J, js_Function *F)
 
 		case OP_THIS:
 			if (J->strict) {
-				js_copy(J, 0);
+				js_Value *val = js_tovalue(J, 0);
+				if (jsV_isprimitive(val) && jsV_iscoercible(val)) {
+					val->u.object = jsV_toobject(J, val);
+					val->type = JS_TOBJECT;
+				}
+				js_pushvalue2(J, val);
 			} else {
-				if (js_iscoercible(J, 0))
-					js_copy(J, 0);
+				if (js_iscoercible(J, 0)) {
+					js_Value *val = js_tovalue(J, 0);
+					if (jsV_isprimitive(val)) {
+						val->u.object = jsV_toobject(J, val);
+						val->type = JS_TOBJECT;
+					}
+					js_pushvalue2(J, val);
+				}
 				else
 					js_pushglobal(J);
 			}
@@ -1700,15 +1751,13 @@ static void jsR_run(js_State *J, js_Function *F)
 
 		case OP_GETPROP:
 			str = js_tostring(J, -1);
-			obj = js_toobject(J, -2);
-			jsR_getproperty(J, obj, str);
+			jsV_getproperty2(J, stackidx(J, -2), str);
 			js_rot3pop2(J);
 			break;
 
 		case OP_GETPROP_S:
 			str = ST[*pc++];
-			obj = js_toobject(J, -1);
-			jsR_getproperty(J, obj, str);
+			jsV_getproperty2(J, stackidx(J, -1), str);
 			js_rot2pop1(J);
 			break;
 

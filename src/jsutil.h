@@ -19,6 +19,13 @@
 	v->type == JS_TLITSTR || \
 	v->type == JS_TCONSTSTR || \
 	(v->type == JS_TOBJECT && v->u.object->type == JS_CSTRING))
+#define jsU_valisstru(v) ( \
+		v->type == JS_TSHRSTR ? 0 : \
+			(v->type == JS_TLITSTR || \
+			v->type == JS_TMEMSTR ||  \
+			v->type == JS_TCONSTSTR) ? v->u.string.isunicode : \
+				(v->type == JS_TOBJECT && v->u.object->type == JS_CSTRING) ? \
+					v->u.object->u.string.isunicode : 0);
 #define jsU_ptrtostrnode(p) \
 	((js_StringNode*)(p - soffsetof(js_StringNode, string)))
 #define jsU_valtostrnode(v) \
