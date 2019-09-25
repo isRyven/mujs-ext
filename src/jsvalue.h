@@ -202,4 +202,14 @@ typedef enum {
 js_Buffer js_dumpfuncbin(js_State *J, js_Function *F, int flags);
 js_Function *jsV_newfunction(js_State *J);
 
+#define jsV_isdefined(v) (v->type != JS_TUNDEFINED)
+#define jsV_isundefined(v) (v->type == JS_TUNDEFINED)
+#define jsV_isnull(v) (v->type == JS_TNULL)
+#define jsV_isboolean(v) (v->type == JS_TBOOLEAN)
+#define jsV_isnumber(v) (v->type == JS_TNUMBER)
+#define jsV_isstring(v) (v->type == JS_TSHRSTR || v->type == JS_TLITSTR || v->type == JS_TMEMSTR || v->type == JS_TCONSTSTR)
+#define jsV_isprimitive(v) (v->type != JS_TOBJECT)
+#define jsV_isobject(v) (v->type == JS_TOBJECT)
+#define jsV_iscoercible(v) (v->type != JS_TUNDEFINED && v->type != JS_TNULL)
+
 #endif

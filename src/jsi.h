@@ -115,6 +115,9 @@ void js_newarguments(js_State *J);
 void js_newfunction(js_State *J, js_Function *function, js_Environment *scope);
 void js_newscript(js_State *J, js_Function *function, js_Environment *scope);
 void js_loadeval(js_State *J, const char *filename, const char *source);
+js_Object *jsV_newboolean(js_State *J, int v);
+js_Object *jsV_newnumber(js_State *J, double v);
+js_Object *jsV_newstringfrom(js_State *J, js_Value *v);
 
 js_Regexp *js_toregexp(js_State *J, int idx);
 int js_isarrayindex(js_State *J, const char *str, int *idx);

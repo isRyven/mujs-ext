@@ -86,6 +86,13 @@ void js_pushvalue(js_State *J, js_Value v)
 	++TOP;
 }
 
+void js_pushvalue2(js_State *J, js_Value *v)
+{
+	CHECKSTACK(1);
+	STACK[TOP] = *v;
+	++TOP;
+}
+
 void js_pushundefined(js_State *J)
 {
 	CHECKSTACK(1);
@@ -1639,10 +1646,21 @@ static void jsR_run(js_State *J, js_Function *F)
 
 		case OP_THIS:
 			if (J->strict) {
-				js_copy(J, 0);
+				js_Value *val = js_tovalue(J, 0);
+				if (jsV_isprimitive(val) && jsV_iscoercible(val)) {
+					val->u.object = jsV_toobject(J, val);
+					val->type = JS_TOBJECT;
+				}
+				js_pushvalue2(J, val);
 			} else {
-				if (js_iscoercible(J, 0))
-					js_copy(J, 0);
+				if (js_iscoercible(J, 0)) {
+					js_Value *val = js_tovalue(J, 0);
+					if (jsV_isprimitive(val)) {
+						val->u.object = jsV_toobject(J, val);
+						val->type = JS_TOBJECT;
+					}
+					js_pushvalue2(J, val);
+				}
 				else
 					js_pushglobal(J);
 			}
