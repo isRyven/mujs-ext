@@ -193,11 +193,15 @@ void js_pushlstring(js_State *J, const char *v, int n)
 	unsigned int len;
 	js_StringNode *strnode;
 	js_Value *value = STACK + TOP;
-	const unsigned char *ptr = (const unsigned char*)v;
+	const unsigned char *p_start = (const unsigned char*)v;
+	const unsigned char *p_end = p_start + n; 
+	const unsigned char *p = p_start;
 	int isunicode;
 	CHECKSTACK(1);
-	for (len = 0; *ptr && *ptr < Runeself && len < (unsigned int)n; ++len, ++ptr) {}
-	isunicode = (*ptr != 0 && n != (int)len); 
+	while (*p && p < p_end && *p < Runeself) 
+		p++;
+	len = p - p_start;
+	isunicode = (*p != 0 && n != (int)len); 
 	if (!isunicode && (len <= soffsetof(js_Value, type))) {
 		char *s = value->u.string.u.shrstr;
 		memcpy(s, v, len);
@@ -207,7 +211,7 @@ void js_pushlstring(js_State *J, const char *v, int n)
 		unsigned int size = len;
 		value->type = JS_TMEMSTR;
 		if (isunicode) {
-			len += utfnlen2((const char*)ptr, n - size, &size);
+			len += utfnlen2((const char*)p, n - size, &size);
 		}
 		strnode = jsV_newmemstring(J, v, size);
 		strnode->length = len;
