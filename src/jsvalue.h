@@ -144,6 +144,7 @@ js_Value *js_tovalue(js_State *J, int idx);
 void js_toprimitive(js_State *J, int idx, int hint);
 js_Object *js_toobject(js_State *J, int idx);
 void js_pushvalue(js_State *J, js_Value v);
+void js_pushvalue2(js_State *J, js_Value *v);
 void js_pushobject(js_State *J, js_Object *v);
 
 /* jsvalue.c */

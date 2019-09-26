@@ -77,14 +77,26 @@ static void jsB_String(js_State *J)
 
 static void Sp_toString(js_State *J)
 {
-	js_Object *self = js_toobject(J, 0);
+	js_Object *self;
+	js_Value *v = js_tovalue(J, 0);
+	if (jsV_isstring(v)) {
+		js_pushvalue2(J, v);
+		return;
+	}
+	self = jsV_toobject(J, v);
 	if (self->type != JS_CSTRING) js_typeerror(J, "not a string");
 	js_pushliteral(J, self->u.string.u.ptr8);
 }
 
 static void Sp_valueOf(js_State *J)
 {
-	js_Object *self = js_toobject(J, 0);
+	js_Object *self;
+	js_Value *v = js_tovalue(J, 0);
+	if (jsV_isstring(v)) {
+		js_pushvalue2(J, v);
+		return;
+	}
+	self = jsV_toobject(J, v);
 	if (self->type != JS_CSTRING) js_typeerror(J, "not a string");
 	js_pushliteral(J, self->u.string.u.ptr8);
 }

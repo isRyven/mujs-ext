@@ -620,27 +620,32 @@ void js_getprototypeof(js_State *J, int n)
 
 void js_concat(js_State *J)
 {
-	js_toprimitive(J, -2, JS_HNONE);
-	js_toprimitive(J, -1, JS_HNONE);
+	js_Value *v1 = js_tovalue(J, -2);
+	js_Value *v2 = js_tovalue(J, -1);
+	jsV_toprimitive(J, v1, JS_HNONE);
+	jsV_toprimitive(J, v2, JS_HNONE);
 
-	if (js_isstring(J, -2) || js_isstring(J, -1)) {
-		const char *sa = js_tostring(J, -2);
-		const char *sb = js_tostring(J, -1);
+	if (jsV_isstring(v1) || jsV_isstring(v2)) {
+		const char *sa = jsV_tostring(J, v1);
+		const char *sb = jsV_tostring(J, v2);
+		int isunicode = jsU_valisstru(v1) + jsU_valisstru(v2);
+		int l1 = jsV_getstrsize(J, v1);
+		int l2 = jsV_getstrsize(J, v2);
 		/* TODO: create js_String directly */
-		char *sab = js_malloc(J, strlen(sa) + strlen(sb) + 1);
-		strcpy(sab, sa);
-		strcat(sab, sb);
+		char *sab = js_malloc(J, l1 + l2);
+		memcpy(sab, sa, l1);
+		memcpy(sab + l1, sb, l2);
 		if (js_try(J)) {
 			js_free(J, sab);
 			js_throw(J);
 		}
 		js_pop(J, 2);
-		js_pushstring(J, sab);
+		js_pushlstringu(J, sab, l1 + l2, isunicode);
 		js_endtry(J);
 		js_free(J, sab);
 	} else {
-		double x = js_tonumber(J, -2);
-		double y = js_tonumber(J, -1);
+		double x = jsV_tonumber(J, v1);
+		double y = jsV_tonumber(J, v2);
 		js_pop(J, 2);
 		js_pushnumber(J, x + y);
 	}
@@ -648,15 +653,16 @@ void js_concat(js_State *J)
 
 int js_compare(js_State *J, int *okay)
 {
-	js_toprimitive(J, -2, JS_HNUMBER);
-	js_toprimitive(J, -1, JS_HNUMBER);
-
+	js_Value *v1 = js_tovalue(J, -2);
+	js_Value *v2 = js_tovalue(J, -1);
+	jsV_toprimitive(J, v1, JS_HNUMBER);
+	jsV_toprimitive(J, v2, JS_HNUMBER);
 	*okay = 1;
-	if (js_isstring(J, -2) && js_isstring(J, -1)) {
-		return strcmp(js_tostring(J, -2), js_tostring(J, -1));
+	if (jsV_isstring(v1) && jsV_isstring(v2)) {
+		return strcmp(jsU_valtocstr(v1), jsU_valtocstr(v2));
 	} else {
-		double x = js_tonumber(J, -2);
-		double y = js_tonumber(J, -1);
+		double x = jsV_tonumber(J, v1);
+		double y = jsV_tonumber(J, v2);
 		if (isnan(x) || isnan(y))
 			*okay = 0;
 		return x < y ? -1 : x > y ? 1 : 0;
@@ -669,9 +675,9 @@ int js_equal(js_State *J)
 	js_Value *y = js_tovalue(J, -1);
 
 retry:
-	// compares any type of strings, even object
-	if (jsU_valisstr(x) && jsU_valisstr(y))
+	if (jsV_isstring(x) && jsV_isstring(y))
 		return !strcmp(jsU_valtocstr(x), jsU_valtocstr(y));
+
 	if (x->type == y->type) {
 		if (x->type == JS_TUNDEFINED) return 1;
 		if (x->type == JS_TNULL) return 1;
@@ -716,7 +722,6 @@ int js_strictequal(js_State *J)
 	js_Value *x = js_tovalue(J, -2);
 	js_Value *y = js_tovalue(J, -1);
 
-	// compares primitive strings only
 	if (jsV_isstring(x) && jsV_isstring(y))
 		return !strcmp(jsU_valtocstr(x), jsU_valtocstr(y));
 
