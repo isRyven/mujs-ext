@@ -318,6 +318,10 @@ const char *jsV_tostring(js_State *J, js_Value *v)
 				v->u.string.isunicode = 0;
 				return node->string;
 			}
+		} else {
+			v->type = JS_TCONSTSTR;
+			v->u.string.u.ptr8 = p;
+			v->u.string.isunicode = 0;
 		}
 		return p;
 	case JS_TOBJECT:

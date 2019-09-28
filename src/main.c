@@ -370,7 +370,10 @@ int main(int argc, char **argv)
 	} else {
 		c = xoptind++;
 		js_newarray(J);
-		i = 0;
+		// push executable path
+		js_pushstring(J, argv[0]);
+		js_setindex(J, -2, 0);
+		i = 1;
 		while (xoptind < argc) {
 			js_pushstring(J, argv[xoptind++]);
 			js_setindex(J, -2, i++);
