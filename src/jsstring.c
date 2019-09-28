@@ -457,6 +457,7 @@ static void S_fromCharCode(js_State *J)
 	int i, top = js_gettop(J);
 	Rune c;
 	char *s, *p;
+	int isunicode = 0;
 
 	if (top == 1) {
 		js_pushconst(J, "");
@@ -472,10 +473,12 @@ static void S_fromCharCode(js_State *J)
 
 	for (i = 1; i < top; ++i) {
 		c = js_touint16(J, i);
+		if (c > 0x7F)
+			isunicode = 1;
 		p += runetochar(p, &c);
 	}
-	*p = 0;
-	js_pushstring(J, s);
+	
+	js_pushlstringu(J, s, p - s, isunicode);
 
 	js_endtry(J);
 	js_free(J, s);
