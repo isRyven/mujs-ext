@@ -13,7 +13,9 @@
 #include <time.h>
 
 #include "mujs.h"
-#include "nozip.h"
+#include <zrc/zrc.h>
+
+zrc_import_lib(tsc_assets)
 
 #if defined(_WIN32)
 #define OS_PLATFORM "win32"
@@ -22,9 +24,6 @@
 #else
 #define OS_PLATFORM "linux"
 #endif
-
-extern unsigned char __pak_data_img[];
-extern unsigned int __pak_data_img_length;
 
 #define MANIFEST_FILE "manifest.json"
 
@@ -41,21 +40,9 @@ static void timefromms(struct timeval *tv, uint64_t v)
 
 #define geterrstr(n) (n == 0 ? "" : strerror(n))
 
-char* extract_file(nozip_t *zip, const char *name, size_t *size) 
+char* extract_file(zrc_lib_t *rc, const char *name, unsigned int *size) 
 {
-	char *output;
-	nozip_entry_t *entry = nozip_locate(zip, name);
-	if (!entry)
-		return NULL; // TODO: error message?
-	output = malloc(entry->uncompressed_size);
-	if (!output)
-		return NULL;
-	if (!output)
-		return NULL;
-	if (nozip_uncompress(zip, entry, output, entry->uncompressed_size) != entry->uncompressed_size)
-		return NULL;
-	*size = entry->uncompressed_size;
-	return output;
+	return zrc_read_file(rc, name, size);
 }
 
 typedef enum {
@@ -64,11 +51,11 @@ typedef enum {
 	SCRIPT_BINARY
 } script_type_t;
 
-int extract_script(nozip_t *zip, const char *filename, char **output, size_t *output_size) 
+int extract_script(zrc_lib_t *rc, const char *filename, char **output, unsigned int *output_size) 
 {
 	char path[256], *ext;
 	// try loading jsbin, if js script is not found
-	if (!(*output = extract_file(zip, filename, output_size))) {
+	if (!(*output = extract_file(rc, filename, output_size))) {
 		sprintf(path, "%s", filename);
 		ext = strrchr(path, '.');
 		if (!ext) {
@@ -76,7 +63,7 @@ int extract_script(nozip_t *zip, const char *filename, char **output, size_t *ou
 		}
 		*ext = 0;
 		strcat(path, ".jsbin");
-		if ((*output = extract_file(zip, path, output_size))) {
+		if ((*output = extract_file(rc, path, output_size))) {
 			return SCRIPT_BINARY;
 		}
 	}
@@ -153,16 +140,16 @@ static void jsB_load(js_State *J)
 static void jsB_loadInternal(js_State *J)
 {
 	char *output;
-	size_t output_size;
+	unsigned int output_size;
 	int result = 0;
-	nozip_t *zip;
+	zrc_lib_t *rc;
 	const char *filename = js_tostring(J, 1);
 	if (!filename[0])
 		js_error(J, "loadInternal: expected scriptname");
 	js_getregistry(J, "InternalFiles");
-	zip = js_touserdata(J, -1, "InternalFiles");
+	rc = js_touserdata(J, -1, "InternalFiles");
 	js_pop(J, -1);
-	result = extract_script(zip, filename, &output, &output_size);
+	result = extract_script(rc, filename, &output, &output_size);
 	if (result == SCRIPT_REGULAR) {
 		if (js_isobject(J, 2)) {
 			js_copy(J, 2);
@@ -260,16 +247,16 @@ static void jsB_readFile(js_State *J)
 
 static void jsB_readInternalFile(js_State *J)
 {
-	nozip_t *zip;
+	zrc_lib_t *rc;
 	char *output;
-	size_t output_size;
+	unsigned int output_size;
 	const char *filename = js_tostring(J, 1);
 	if (!filename[0])
 		js_error(J, "readInternalFile: expected filename");
 	js_getregistry(J, "InternalFiles");
-	zip = js_touserdata(J, -1, "InternalFiles");
+	rc = js_touserdata(J, -1, "InternalFiles");
 	js_pop(J, -1);
-	if (!(output = extract_file(zip, filename, &output_size)))
+	if (!(output = extract_file(rc, filename, &output_size)))
 		js_error(J, "readInternalFile: cannot open file '%s': %s", filename, geterrstr(errno));
 	js_pushlstring(J, output, output_size);
 	js_free(J, output);
@@ -277,17 +264,16 @@ static void jsB_readInternalFile(js_State *J)
 
 static void jsB_existsInternal(js_State *J)
 {
-	nozip_t *zip;
+	zrc_lib_t *rc;
 	char path[256], *ext;
 	const char *filename = js_tostring(J, 1);
 	if (!filename[0])
 		js_error(J, "existsInternal: expected filename");
 	js_getregistry(J, "InternalFiles");
-	zip = js_touserdata(J, -1, "InternalFiles");
+	rc = js_touserdata(J, -1, "InternalFiles");
 	js_pop(J, -1);
 	// naive lookup
-	nozip_entry_t *entry = nozip_locate(zip, filename);
-	if (entry) {
+	if (zrc_file_exists(rc, filename)) {
 		js_pushboolean(J, 1);
 		return;
 	}
@@ -301,8 +287,7 @@ static void jsB_existsInternal(js_State *J)
 	if (!strcmp(ext, ".js")) {
 		*ext = 0;
 		strcat(path, ".jsbin");
-		nozip_entry_t *entry = nozip_locate(zip, path);
-		if (entry) {
+		if (zrc_file_exists(rc, path)) {
 			js_pushboolean(J, 1);
 			return;
 		}
@@ -467,21 +452,20 @@ int main(int argc, char *argv[]) {
 	int i, status = 0;
 	const char *bootstrap_name;
 	char *bootstrap_src, *manifest_src = NULL;
-	size_t bootstrap_size, manifest_size;
+	unsigned int bootstrap_size, manifest_size;
 	js_State *J = js_newstate(NULL, NULL, 0);
 	typedef int (*host_action_t)(js_State *J);
 	host_action_t host_action;
-	size_t zsize = nozip_size_mem(__pak_data_img, __pak_data_img_length);
-	nozip_t *zip = malloc(zsize); 
-	if (!zip || !nozip_read_mem(zip, __pak_data_img, __pak_data_img_length)) {
+	zrc_lib_t rc;
+	if (zrc_open_lib(&rc, zrc_get_lib(tsc_assets), NULL, NULL)) {
 		js_freestate(J);
 		fprintf(stderr, "cannot allocate memory or read zip file.\n");
 		return 1;
 	}
 
 #define GET_FILE_OR_EXIT(name, out, outsize) \
-	if (!(out = extract_file(zip, name, outsize))) { \
-		free(zip); \
+	if (!(out = extract_file(&rc, name, outsize))) { \
+		zrc_close_lib(&rc); \
 		fprintf(stderr, "cannot extract file '%s': %s", name, geterrstr(errno)); \
 		js_freestate(J); \
 		return 1; \
@@ -584,14 +568,14 @@ int main(int argc, char *argv[]) {
 	js_setproperty(J, -2, "__scriptArgs");
 
 	js_newobject(J);
-	js_newuserdata(J, "InternalFiles", zip, NULL);
+	js_newuserdata(J, "InternalFiles", &rc, NULL);
 	js_setregistry(J, "InternalFiles");
 
 	if (js_try(J)) {
 		status = 1;
 		fprintf(stderr, "%s\n", js_tostring(J, -1));		
 	} else {
-		int result = extract_script(zip, bootstrap_name, &bootstrap_src, &bootstrap_size);
+		int result = extract_script(&rc, bootstrap_name, &bootstrap_src, &bootstrap_size);
 		if (result == SCRIPT_REGULAR) {
 			js_loadstringE(J, bootstrap_name, bootstrap_src);
 		} else if (result == SCRIPT_BINARY) {
@@ -610,7 +594,7 @@ int main(int argc, char *argv[]) {
 end:
 	js_freestate(J);
 	free(manifest_src);
-	free(zip);
+	zrc_close_lib(&rc);
 
 	return status ? 1 : 0;
 }

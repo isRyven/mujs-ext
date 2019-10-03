@@ -82,6 +82,7 @@ endif()
 # TypeScript Compiler
 
 if(TSCOMPILER)
+	include(cmake/CMakeZRC.cmake)
 	message(STATUS "Standalone TypeScript compiler is enabled")
 
 	add_library(muts STATIC ${MUJS_C_SRC} ${MUJS_H_SRC})
@@ -89,54 +90,34 @@ if(TSCOMPILER)
 	target_include_directories(muts PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include/mujs")
 	target_compile_definitions(muts PRIVATE JS_COMPILER_DISABLED)
 
-	add_executable(tsc src/tsc.c $<TARGET_OBJECTS:nozip> $<TARGET_OBJECTS:assets_data_img>)
-	target_link_libraries(tsc muts)
-	target_include_directories(tsc PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include/mujs")
-	target_include_directories(tsc PRIVATE "${PROJECT_SOURCE_DIR}/deps/nozip/src")
+	zrc_add_resource_library(tsc_assets 
+		WORKING_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src_tsc
+		manifest.json
+	)
 
-	file(GLOB_RECURSE ASSETS_DATA "${PROJECT_SOURCE_DIR}/src_tsc/*" )
-	list(FILTER ASSETS_DATA EXCLUDE REGEX "\\.js$")
-	file(GLOB_RECURSE ASSETS_SCRIPTS "${PROJECT_SOURCE_DIR}/src_tsc/*.js" )
+	file(GLOB tsc_scripts "${PROJECT_SOURCE_DIR}/src_tsc/*.js")
+	set(tsc_assets_temp "${CMAKE_CURRENT_BINARY_DIR}/__tsc_assets_temp")
+	file(MAKE_DIRECTORY ${tsc_assets_temp})
+	list(TRANSFORM tsc_scripts REPLACE "^${PROJECT_SOURCE_DIR}/src_tsc/(.+)" "\\1bin" OUTPUT_VARIABLE tsc_bin_scripts)
+	
+	zrc_add_resources(tsc_assets 
+		WORKING_DIR ${tsc_assets_temp}
+		${tsc_bin_scripts}
+	)
 
-	set(ASSETS_IMG_TEMP_DIR "${CMAKE_CURRENT_BINARY_DIR}/assets_temp")
-	set(ASSETS_IMG_PATH "${CMAKE_CURRENT_BINARY_DIR}/assets_data.pak")
-	file(MAKE_DIRECTORY ${ASSETS_IMG_TEMP_DIR})
-
-	add_custom_target(precompile_assets_scripts
-	  	COMMAND mujs-repl -c ${ASSETS_SCRIPTS}
-	  	DEPENDS mujs-repl ${ASSETS_SCRIPTS}
-	  	WORKING_DIRECTORY ${ASSETS_IMG_TEMP_DIR}
+	add_custom_target(tsc_precompile_scripts
+	  	COMMAND mujs-repl -c ${tsc_scripts}
+	  	DEPENDS mujs-repl ${tsc_scripts}
+	  	WORKING_DIRECTORY ${tsc_assets_temp}
 	  	COMMENT "Precompiling assets scripts"
 	)
 
-	add_custom_target(copy_assets_data
-		COMMAND ${CMAKE_COMMAND} -E copy ${ASSETS_DATA} .
-		DEPENDS ${ASSETS_DATA}
-		WORKING_DIRECTORY ${ASSETS_IMG_TEMP_DIR}
-		COMMENT "Copying assets data"
-	)
+	add_dependencies(tsc_assets tsc_precompile_scripts)
 
-	add_custom_target(build_assets_image
-		COMMAND ${CMAKE_COMMAND} -E tar "cfv" ${ASSETS_IMG_PATH} --format=zip "*"
-		WORKING_DIRECTORY ${ASSETS_IMG_TEMP_DIR}
-		COMMENT "Generating assets data image"
-		DEPENDS precompile_assets_scripts copy_assets_data
-	)
+	add_executable(tsc src/tsc.c)
+	target_link_libraries(tsc muts tsc_assets)
+	target_include_directories(tsc PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include/mujs")
 
-	set(ASSETS_IMG_C ${CMAKE_CURRENT_BINARY_DIR}/assets_data_img.c)
-	add_custom_command(
-	  	OUTPUT ${ASSETS_IMG_C}
-	  	COMMAND toheader __pak_data_img ${ASSETS_IMG_PATH} ${ASSETS_IMG_C}
-	  	DEPENDS toheader build_assets_image ${ASSETS_IMG_PATH} ${ASSETS_SCRIPTS} ${ASSETS_DATA}
-	  	WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
-	  	COMMENT "Generating assets image c file"
-	)
-
-	add_library(assets_data_img OBJECT ${ASSETS_IMG_C})
 endif()
 
-# DEPS
-
 add_subdirectory(test)
-add_subdirectory(deps/nozip)
-add_subdirectory(deps/toheader)
