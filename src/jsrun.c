@@ -160,6 +160,12 @@ void js_pushlstringu(js_State *J, const char *str, int n, int isunicode)
 	js_StringNode *strnode;
 	unsigned int len, size = 0;
 	CHECKSTACK(1);
+	if (!str || n == 0) {
+		value->type = JS_TSHRSTR;
+		value->u.string.u.shrstr[0] = 0;
+		++TOP;
+		return;
+	}
 	if (!isunicode && (n <= soffsetof(js_Value, type))) {
 		char *s = value->u.string.u.shrstr;
 		memcpy(s, str, n);
@@ -198,6 +204,12 @@ void js_pushlstring(js_State *J, const char *v, int n)
 	const unsigned char *p = p_start;
 	int isunicode;
 	CHECKSTACK(1);
+	if (!v || n == 0) {
+		value->type = JS_TSHRSTR;
+		value->u.string.u.shrstr[0] = 0;
+		++TOP;
+		return;
+	}
 	while (*p && p < p_end && *p < Runeself) 
 		p++;
 	len = p - p_start;
