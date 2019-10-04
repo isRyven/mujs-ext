@@ -4,7 +4,7 @@
 #include <string.h>
 #include <assert.h>
 #include <time.h>
-#include "mujs.h"
+#include <mujs/mujs.h>
 
 double get_time()
 {

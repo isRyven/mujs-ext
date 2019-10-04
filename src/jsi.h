@@ -1,7 +1,7 @@
 #ifndef jsi_h
 #define jsi_h
 
-#include "mujs.h"
+#include <mujs/mujs.h>
 
 #include <stdio.h>
 #include <stdlib.h>

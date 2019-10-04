@@ -4,7 +4,7 @@
 #include <unistd.h>
 #include <errno.h>
 
-#include "mujs.h"
+#include <mujs/mujs.h>
 
 #if defined(WIN32) || defined(_WIN32) || defined __CYGWIN__
   #define PATH_SEPARATOR '\\' 

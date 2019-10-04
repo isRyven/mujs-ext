@@ -6,7 +6,7 @@
 #include <stdint.h>
 #include <stdarg.h>
 
-#include "mujs.h"
+#include <mujs/mujs.h>
 
 js_State *J;
 

@@ -12,7 +12,7 @@
 #include <sys/time.h>
 #include <time.h>
 
-#include "mujs.h"
+#include <mujs/mujs.h>
 #include <zrc/zrc.h>
 
 zrc_import_lib(tsc_assets)

@@ -60,13 +60,14 @@ set(MUJS_H_SRC
 
 # MUSJ
 
+add_library(mujs_h INTERFACE)
+target_include_directories(mujs_h INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+
 add_library(mujs STATIC ${MUJS_C_SRC} ${MUJS_H_SRC})
-target_link_libraries(mujs m)
-target_include_directories(mujs PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include/mujs")
+target_link_libraries(mujs m mujs_h)
 
 add_executable(mujs-repl src/main.c)
 target_link_libraries(mujs-repl mujs)
-target_include_directories(mujs-repl PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include/mujs")
 
 if(NOT JSCOMPILER)
 	message(STATUS "JS compiler is disabled")
@@ -86,8 +87,7 @@ if(TSCOMPILER)
 	message(STATUS "Standalone TypeScript compiler is enabled")
 
 	add_library(muts STATIC ${MUJS_C_SRC} ${MUJS_H_SRC})
-	target_link_libraries(muts m)
-	target_include_directories(muts PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include/mujs")
+	target_link_libraries(muts m mujs_h)
 	target_compile_definitions(muts PRIVATE JS_COMPILER_DISABLED)
 
 	zrc_add_resource_library(tsc_assets 
@@ -116,7 +116,6 @@ if(TSCOMPILER)
 
 	add_executable(tsc src/tsc.c)
 	target_link_libraries(tsc muts tsc_assets)
-	target_include_directories(tsc PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include/mujs")
 
 endif()
 
