@@ -22,8 +22,7 @@ Use in cmake project:
 ```cmake
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/deps/mujs")
 target_link_libraries(application mujs)
-target_include_directories(application PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/deps/mujs/include")
-// #include "mujs/mujs.h"
+// #include <mujs/mujs.h>
 ```
 
 # LICENSE
