@@ -37,6 +37,17 @@ if(__ZRC_GENERATE_MODE)
     string(REGEX REPLACE "(..)(..)(..)(..)(..)" "0x\\1,0x\\2,0x\\3,0x\\4,0x\\5," hex_codes "${pak_bytes}")
     string(LENGTH "${pak_bytes}" n_bytes2)
     math(EXPR pak_size "${n_bytes2} / 2")
+    math(EXPR remainder "${pak_size} % 5")
+    set(cleanup_re "$")
+    set(cleanup_sub )
+    while(remainder)
+        set(cleanup_re "(..)${cleanup_re}")
+        set(cleanup_sub "0x\\${remainder},${cleanup_sub}")
+        math(EXPR remainder "${remainder} - 1")
+    endwhile()
+    if(NOT cleanup_re STREQUAL "$")
+        string(REGEX REPLACE "${cleanup_re}" "${cleanup_sub}" hex_codes "${hex_codes}")
+    endif()
     string(CONFIGURE [[
         const unsigned char __zrc_cache_@zrc_lib_id@[] = {
             @hex_codes@
@@ -44,7 +55,7 @@ if(__ZRC_GENERATE_MODE)
         const unsigned int __zrc_cache_@zrc_lib_id@_length = @pak_size@; 
     ]] code)
     file(WRITE "${__ZRC_OUTPUT}" "${code}")
-	return()
+    return()
 endif()
 
 set(__version 0.0.1)
@@ -56,8 +67,8 @@ if(COMMAND zrc_add_resource_library)
     return()
 endif()
 
-set(__ZRC_VERSION "${__version}" CACHE INTERNAL "CMakeRC version. Used for checking for conflicts")
-set(__ZRC_SCRIPT "${CMAKE_CURRENT_LIST_FILE}" CACHE INTERNAL "Path to ZRC script")
+set(__ZRC_VERSION "${__version}" CACHE INTERNAL "CMakeZRC version. Used for checking for conflicts")
+set(__ZRC_SCRIPT "${CMAKE_CURRENT_LIST_FILE}" CACHE INTERNAL "Path to CMakeZRC script")
 set(__ZRC_H_CONTENTS [==[
     #ifndef ZRC_BASE_H
     #define ZRC_BASE_H
@@ -90,10 +101,10 @@ set(__ZRC_H_CONTENTS [==[
     #endif // ZRC_BASE_H
 ]==])
 
-set(__zrc_common_dir "${CMAKE_BINARY_DIR}/__zrc" CACHE INTERNAL "ZRC root directory")
-set(__zrc_include_dir "${__zrc_common_dir}/include" CACHE INTERNAL "ZRC include files directory")
+set(__zrc_common_dir "${CMAKE_BINARY_DIR}/__zrc" CACHE INTERNAL "CMakeZRC root directory")
+set(__zrc_include_dir "${__zrc_common_dir}/include" CACHE INTERNAL "CMakeZRC include files directory")
 file(MAKE_DIRECTORY "${__zrc_include_dir}/zrc")
-set(__zrc_h_path "${__zrc_include_dir}/zrc/zrc.h" CACHE INTERNAL "ZRC header file path")
+set(__zrc_h_path "${__zrc_include_dir}/zrc/zrc.h" CACHE INTERNAL "CMakeZRC header file path")
 set(__generate 1)
 if(EXISTS "${__zrc_h_path}")
     file(READ "${__zrc_h_path}" __current)
@@ -997,7 +1008,7 @@ set(__ZRC_BASE_CONTENTS [==[
     }
 ]==])
 
-set(__zrc_base_path "${__zrc_common_dir}/zrc.c" CACHE INTERNAL "ZRC base implementation file")
+set(__zrc_base_path "${__zrc_common_dir}/zrc.c" CACHE INTERNAL "CMakeZRC base implementation file")
 set(__generate 1)
 if(EXISTS "${__zrc_base_path}")
     file(READ "${__zrc_base_path}" __current)
@@ -1005,22 +1016,23 @@ if(EXISTS "${__zrc_base_path}")
         set(__generate 0)
     endif()
 endif()
+
 file(GENERATE OUTPUT "${__zrc_base_path}" CONTENT "${__ZRC_BASE_CONTENTS}" CONDITION ${__generate})
 
 function(zrc_add_resource_library name)
-	set(options "")
-	set(args WORKING_DIR)
-	set(list_args "")
+    set(options "")
+    set(args WORKING_DIR)
+    set(list_args "")
     cmake_parse_arguments(
-    	PARSE_ARGV 1
-		arg
-		"${options}" "${args}" "${list_args}")
+        PARSE_ARGV 1
+        arg
+        "${options}" "${args}" "${list_args}")
     if (NOT arg_WORKING_DIR)
-    	set(arg_WORKING_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+        set(arg_WORKING_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
     endif()
     
-	set(zrc_cache_root "${__zrc_common_dir}/__cache_${name}")
-	set(zrc_cache_list "${zrc_cache_root}/rc.txt")
+    set(zrc_cache_root "${__zrc_common_dir}/__cache_${name}")
+    set(zrc_cache_list "${zrc_cache_root}/rc.txt")
     set(zrc_cache_out "${zrc_cache_root}/rc.c")
     set(zrc_cache_pak "${zrc_cache_root}/rc.pak")
     set(zrc_cache_store "${zrc_cache_root}/store")
@@ -1029,10 +1041,20 @@ function(zrc_add_resource_library name)
     target_link_libraries("${name}" PUBLIC __zrc_h)
 
     set_property(TARGET "${name}" PROPERTY RES_NAME "${name}")
-	set_property(TARGET "${name}" PROPERTY RES_CACHE_ROOT "${zrc_cache_root}")
+    set_property(TARGET "${name}" PROPERTY RES_CACHE_ROOT "${zrc_cache_root}")
     set_property(TARGET "${name}" PROPERTY RES_LIST "${zrc_cache_list}")
 
-	add_custom_command(
+    add_custom_command(
+        OUTPUT "${__zrc_base_path}" 
+        COMMAND ${CMAKE_COMMAND} -E touch "${__zrc_base_path}"
+    )
+
+    add_custom_command(
+        OUTPUT "${__zrc_h_path}" 
+        COMMAND ${CMAKE_COMMAND} -E touch "${__zrc_h_path}"
+    )
+    
+    add_custom_command(
         OUTPUT "${zrc_cache_out}"
         DEPENDS "${zrc_cache_list}" "${__ZRC_SCRIPT}"
         COMMAND
@@ -1051,27 +1073,27 @@ function(zrc_add_resource_library name)
     file(WRITE "${zrc_cache_list}" "ZRC\n")
 
     zrc_add_resources("${name}"
-    	WORKING_DIR "${arg_WORKING_DIR}"
-    	${arg_UNPARSED_ARGUMENTS}
+        WORKING_DIR "${arg_WORKING_DIR}"
+        ${arg_UNPARSED_ARGUMENTS}
     )
 endfunction()
 
 function(zrc_add_resources name)
-	set(options "")
-	set(args WORKING_DIR)
-	set(list_args "")
+    set(options "")
+    set(args WORKING_DIR)
+    set(list_args "")
     cmake_parse_arguments(
-    	PARSE_ARGV 1
-		arg
-		"${options}" "${args}" "${list_args}")
+        PARSE_ARGV 1
+        arg
+        "${options}" "${args}" "${list_args}")
     if (NOT arg_WORKING_DIR)
-    	set(arg_WORKING_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+        set(arg_WORKING_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
     endif()
     get_target_property(zrc_cache_list "${name}"  RES_LIST)
-	file(APPEND "${zrc_cache_list}" "${arg_WORKING_DIR};")
-   	foreach(resource IN LISTS arg_UNPARSED_ARGUMENTS)
-   		message(STATUS "[${name}] add resource ${resource}")
-   		file(APPEND "${zrc_cache_list}" "${resource};")
-	endforeach()
-	file(APPEND "${zrc_cache_list}" "\n")
+    file(APPEND "${zrc_cache_list}" "${arg_WORKING_DIR};")
+    foreach(resource IN LISTS arg_UNPARSED_ARGUMENTS)
+        message(STATUS "[${name}] add resource ${resource}")
+        file(APPEND "${zrc_cache_list}" "${resource};")
+    endforeach()
+    file(APPEND "${zrc_cache_list}" "\n")
 endfunction()
