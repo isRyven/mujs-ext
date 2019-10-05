@@ -1,8 +1,10 @@
 cmake_minimum_required(VERSION 3.12)
 project(mujs C)
 
-option(TSCOMPILER "Enable TypeScript Compiler (standalone)" OFF)
-option(JSCOMPILER "Include JS Parser And Compiler (disable to reduce binary size)" ON)
+option(BUILD_JS_REPL "Build MuJS repl executable" OFF)
+option(ENABLE_JS_COMPILER "Enable JS Parser And Compiler" ON)
+option(BUILD_TS_COMPILER "Enable TypeScript Compiler (standalone)" OFF)
+option(BUILD_TESTS "Build tests" OFF)
 
 if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -D_GNU_SOURCE -pedantic -Wall -Wextra -Wno-unused-parameter -fvisibility=hidden")
@@ -66,15 +68,18 @@ target_include_directories(mujs_h INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/include
 add_library(mujs STATIC ${MUJS_C_SRC} ${MUJS_H_SRC})
 target_link_libraries(mujs m mujs_h)
 
-add_executable(mujs-repl src/main.c)
-target_link_libraries(mujs-repl mujs)
+if(BUILD_JS_REPL AND (PROJECT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR))
+	message(STATUS "Build MuJS repl")
+	add_executable(mujs-repl src/main.c)
+	target_link_libraries(mujs-repl mujs)
+endif()
 
-if(NOT JSCOMPILER)
-	message(STATUS "JS compiler is disabled")
+if(NOT ENABLE_JS_COMPILER)
+	message(STATUS "Disable MuJS compiler")
 	target_compile_definitions(mujs PRIVATE JS_COMPILER_DISABLED)
 	target_compile_definitions(mujs-repl PRIVATE JS_COMPILER_DISABLED)
-	if(DEFINED JSONCOMPILER AND JSONCOMPILER EQUAL 0)
-		message(STATUS "JSON compiler is disabled")
+	if(DEFINED ENABLE_JSON_COMPILER AND ENABLE_JSON_COMPILER EQUAL 0)
+		message(STATUS "Disable JSON compiler")
 		target_compile_definitions(mujs PRIVATE JSON_PARSER_DISABLED)
 		target_compile_definitions(mujs-repl PRIVATE JSON_PARSER_DISABLED)
 	endif()
@@ -82,9 +87,9 @@ endif()
 
 # TypeScript Compiler
 
-if(TSCOMPILER)
+if(BUILD_TS_COMPILER AND (PROJECT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR))
 	include(cmake/CMakeZRC.cmake)
-	message(STATUS "Standalone TypeScript compiler is enabled")
+	message(STATUS "Build standalone TypeScript compiler")
 
 	add_library(muts STATIC ${MUJS_C_SRC} ${MUJS_H_SRC})
 	target_link_libraries(muts m mujs_h)
@@ -119,4 +124,11 @@ if(TSCOMPILER)
 
 endif()
 
-add_subdirectory(test)
+
+if(BUILD_TESTS AND (PROJECT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR))
+    enable_testing()
+    if(NOT MSVC)
+        add_compile_options(-Wall -Wextra)
+    endif()
+	add_subdirectory(tests)
+endif()
