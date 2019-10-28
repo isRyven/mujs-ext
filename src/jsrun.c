@@ -9,6 +9,10 @@
 
 static void jsR_run(js_State *J, js_Function *F);
 
+typedef struct { int current; } js_LocalScope;
+void js_createlocalscope(js_State *J, js_LocalScope *scope, int offset);
+void js_destroylocalscope(js_State *J, js_LocalScope *scope);
+
 /* Push values on stack */
 
 #define STACK (J->stack)
@@ -492,7 +496,7 @@ void js_remove(js_State *J, int idx)
 
 void js_insert(js_State *J, int idx)
 {
-	js_error(J, "not implemented yet");
+	
 }
 
 void js_replace(js_State* J, int idx)
@@ -577,29 +581,29 @@ void js_rot(js_State *J, int n)
 
 int js_setbot(js_State *J, int n)
 {
-    int prevValue = J->bot;
-    J->bot += n;
-    if (J->bot > J->top) {
-        J->bot = prevValue;
-        js_error(J, "stack underflow!");
-    }
-    return n;
+	int prevValue = J->bot;
+	J->bot += n;
+	if (J->bot > J->top) {
+		J->bot = prevValue;
+		js_error(J, "stack underflow!");
+	}
+	return n;
 }
 
 void js_rotnpop(js_State *J, int rot)
 {
-    STACK[TOP - rot] = STACK[TOP - 1];
-    TOP -= rot - 1;
+	STACK[TOP - rot] = STACK[TOP - 1];
+	TOP -= rot - 1;
 }
 
 void js_copyrange(js_State *J, int from, int to)
 {
-    CHECKSTACK(to - from);
-    for (int idx = from; idx < to; idx++)
-    {
-        STACK[TOP] = *stackidx(J, idx);
-        ++TOP;
-    }
+	CHECKSTACK(to - from);
+	for (int idx = from; idx < to; idx++)
+	{
+		STACK[TOP] = *stackidx(J, idx);
+		++TOP;
+	}
 }
 
 /* Property access that takes care of attributes and getters/setters */
@@ -657,8 +661,8 @@ static int jsR_hasproperty(js_State *J, js_Object *obj, const char *name)
 					js_pushrune(J, js_runeat(J, obj->u.string.u.ptr8, k));
 				else 
 					js_pushlstringu(J, obj->u.string.u.ptr8 + k, 1, 0);
- 				return 1;
- 			}
+				return 1;
+			}
 		}
 	}
 
@@ -686,8 +690,16 @@ static int jsR_hasproperty(js_State *J, js_Object *obj, const char *name)
 	}
 
 	else if (obj->type == JS_CUSERDATA) {
-		if (obj->u.user.has && obj->u.user.has(J, obj->u.user.data, name))
+		js_LocalScope scope; /* create scope */
+		js_createlocalscope(J, &scope, 0); /* set new bot */
+		js_pushobject(J, obj);
+		if (obj->u.user.has && obj->u.user.has(J, obj->u.user.data, name)) {
+			js_destroylocalscope(J, &scope); /* restore old bot */
+			js_rot2pop1(J); /* handle return value */
 			return 1;
+		}
+		js_destroylocalscope(J, &scope);
+		js_pop(J, 1);
 	}
 
 	ref = jsV_getproperty(J, obj, name);
@@ -728,8 +740,8 @@ static void jsV_getproperty2(js_State *J, js_Value *val, const char *name)
 					js_pushrune(J, js_runeat(J, cstr, k));
 				else 
 					js_pushlstringu(J, cstr + k, 1, 0);
- 				return;
- 			}
+				return;
+			}
 		}
 	}
 	jsR_getproperty(J, jsV_toobjectP(J, val), name);
@@ -779,7 +791,16 @@ static void jsR_setproperty(js_State *J, js_Object *obj, const char *name)
 	}
 
 	else if (obj->type == JS_CUSERDATA) {
-		if (obj->u.user.put && obj->u.user.put(J, obj->u.user.data, name))
+		int isHandled = 0;
+		js_LocalScope scope; /* create scope */
+		js_createlocalscope(J, &scope, 0); /* set new bot */
+		js_pushobject(J, obj);
+		js_pushvalue2(J, value);
+		if (obj->u.user.put)
+			isHandled = obj->u.user.put(J, obj->u.user.data, name);
+		js_destroylocalscope(J, &scope);
+		js_pop(J, 2);
+		if (isHandled)
 			return;
 	}
 
@@ -849,7 +870,16 @@ static void jsR_defproperty(js_State *J, js_Object *obj, const char *name,
 	}
 
 	else if (obj->type == JS_CUSERDATA) {
-		if (obj->u.user.put && obj->u.user.put(J, obj->u.user.data, name))
+		int isHandled = 0;
+		js_LocalScope scope; /* create scope */
+		js_createlocalscope(J, &scope, 0); /* set new bot */
+		js_pushobject(J, obj);
+		js_pushvalue2(J, value);
+		if (obj->u.user.put)
+			isHandled = obj->u.user.put(J, obj->u.user.data, name);
+		js_destroylocalscope(J, &scope);
+		js_pop(J, 2);
+		if (isHandled)
 			return;
 	}
 
@@ -900,7 +930,7 @@ static int jsR_delproperty(js_State *J, js_Object *obj, const char *name)
 		if (js_isarrayindex(J, name, &k)) {
 			strnode = jsU_ptrtostrnode(obj->u.string.u.ptr8);
 			if (k >= 0 && k < (int)strnode->length)
- 				goto dontconf;
+				goto dontconf;
 		}
 	}
 
@@ -1460,44 +1490,42 @@ int js_pcall(js_State *J, int n)
 	return 0;
 }
 
-typedef struct { int current; } js_LocalScope;
-
 void js_createlocalscope(js_State *J, js_LocalScope *scope, int offset)
 {
-    int bot = BOT;
-    int newBot = TOP - offset;
-    scope->current = bot;
-    if (newBot > TOP)
-        js_error(J, "stack underflow!");
-    BOT = newBot;
+	int bot = BOT;
+	int newBot = TOP - offset;
+	scope->current = bot;
+	if (newBot > TOP)
+		js_error(J, "stack underflow!");
+	BOT = newBot;
 }
 
 void js_destroylocalscope(js_State *J, js_LocalScope *scope)
 {
-    BOT = scope->current;
-    if (BOT > TOP)
-    {
-        BOT = TOP;
-        js_error(J, "stack underflow!");
-    }
+	BOT = scope->current;
+	if (BOT > TOP)
+	{
+		BOT = TOP;
+		js_error(J, "stack underflow!");
+	}
 }
 
 void js_callscoped(js_State *J, js_CFunctionScoped cfun, void *data, int length)
 {
-    js_LocalScope scope;
-    js_createlocalscope(J, &scope, length + 1);
-    cfun(J, data);
-    js_rotnpop(J, length + 2);
-    js_destroylocalscope(J, &scope);
+	js_LocalScope scope;
+	js_createlocalscope(J, &scope, length + 1);
+	cfun(J, data);
+	js_rotnpop(J, length + 2);
+	js_destroylocalscope(J, &scope);
 }
 
 void js_callscoped2(js_State *J, js_CFunction cfun, int length)
 {
-    js_LocalScope scope;
-    js_createlocalscope(J, &scope, length + 1);
-    cfun(J);
-    js_rotnpop(J, length + 2);
-    js_destroylocalscope(J, &scope);
+	js_LocalScope scope;
+	js_createlocalscope(J, &scope, length + 1);
+	cfun(J);
+	js_rotnpop(J, length + 2);
+	js_destroylocalscope(J, &scope);
 }
 
 /* Exceptions */

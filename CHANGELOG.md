@@ -48,3 +48,4 @@
 * Optimized error call stack concatenation, should generate call stack outputs efficiently.
 * Optimized `charCodeAt` and `charAt` methods, should run faster.
 * Optimized `String.prototype` methods to use string meta and yield output faster.
+* Fixed `js_HasProperty` and `js_Put` property accessors are now executed in local scope similar to js cfunctions, where context object is stored at index `0` and and value is stored on index `1` (for `js_Put`).

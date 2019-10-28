@@ -409,7 +409,7 @@ Pop an object from the top of the stack to use as the internal prototype propert
 
 The `finalize` callback, if it is not `NULL`, will be called when the object is freed by the garbage collector.
 
-The extended function also has callback functions for overriding property accesses. If these are set, they can be used to override accesses to certain properties. Any property accesses that are not overridden will be handled as usual in the runtime. The `HasProperty` callback should push a value and return `1` if it wants to handle the property, otherwise it should do nothing and return `0`. `Put` should pop a value and return `1` if it wants to handle the property. Likewise, `Delete` should return `1` if it wants to handle the property.
+The extended function also has callback functions for overriding property accesses. If these are set, they can be used to override accesses to certain properties. Any property accesses that are not overridden will be handled as usual in the runtime. The `HasProperty` callback should push a value and return `1` if it wants to handle the property, otherwise it should do nothing and return `0`. `Put` should use a value (`idx = -1`) and return `1` if it wants to handle the property. Likewise, `Delete` should return `1` if it wants to handle the property.
 
 ```c
 int js_isuserdata(js_State *J, int idx, const char *tag);
