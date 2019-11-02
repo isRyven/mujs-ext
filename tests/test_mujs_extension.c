@@ -322,6 +322,17 @@ MU_TEST(it_should_insert_new_entry_into_the_object_2)
 	mu_assert(!js_iserror(J, -1), js_tostring(J, -1));
 } 
 
+MU_TEST(it_should_swap_stack_values)
+{
+	js_pushnumber(J, 10);
+	js_pushnumber(J, 20);
+	js_pushnumber(J, 30);
+	js_pushnumber(J, 40);
+	mu_assert_int_eq(10, js_toint32(J, 0));
+	js_swap(J, 0);
+	mu_assert_int_eq(40, js_toint32(J, 0));
+}
+
 MU_TEST_SUITE(test_suite) {
 	MU_SUITE_CONFIGURE(&test_setup, &test_teardown);
 	MU_RUN_TEST(it_should_offset_bottom_of_stack);
@@ -345,6 +356,7 @@ MU_TEST_SUITE(test_suite) {
 	MU_RUN_TEST(it_should_return_proper_negative_value_from_function);
 	MU_RUN_TEST(it_should_insert_new_entry_into_the_object);
 	MU_RUN_TEST(it_should_insert_new_entry_into_the_object_2);
+	MU_RUN_TEST(it_should_swap_stack_values);
 }
 
 int main(int argc, char **argv) {

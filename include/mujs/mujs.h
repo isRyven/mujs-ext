@@ -201,6 +201,7 @@ void js_copy(js_State *J, int idx);
 void js_remove(js_State *J, int idx);
 void js_insert(js_State *J, int idx);
 void js_replace(js_State* J, int idx);
+void js_swap(js_State *J, int idx);
 
 void js_dup(js_State *J);
 void js_dup2(js_State *J);
