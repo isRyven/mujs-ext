@@ -507,6 +507,16 @@ void js_replace(js_State* J, int idx)
 	STACK[idx] = STACK[--TOP];
 }
 
+void js_swap(js_State *J, int idx)
+{
+	idx = idx < 0 ? TOP + idx : BOT + idx;
+	if (idx < BOT || idx >= TOP)
+		js_error(J, "stack error!");
+	js_Value tmp = STACK[idx];
+	STACK[idx] = STACK[TOP - 1];
+	STACK[TOP - 1] = tmp;
+}
+
 void js_copy(js_State *J, int idx)
 {
 	CHECKSTACK(1);
