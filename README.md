@@ -1,9 +1,31 @@
-# MUJS
+# About
 
-MuJS is a ES5 compliant Javascript interpreter, written in plain C. Its lightweight implementation (the source contains around 15000 lines of C) designed for embedding in
-other software to extend them with scripting capabilities. Under 64-bit Linux, the compiled library takes 180kB if optimized for size, and 260kB if optimized for speed. It is a bytecode interpreter with a very fast mechanism to call-out to C. The default build is sandboxed with very restricted access to resources. The API (lua alike) is simple and well documented, and allows strong integration with code written in other languages.
+__MuJS__ is a ES5 compliant Javascript interpreter, written in plain C. Its lightweight implementation (the source contains around 15000 lines of C) designed for embedding in
+other software to extend them with scripting capabilities. Under 64-bit Linux, the compiled library takes 200kB if optimized for size, and 300kB if optimized for speed. It is a bytecode interpreter with a very fast mechanism to call-out to C. The default build is sandboxed with very restricted access to resources. The API (lua alike) is simple and well documented, and allows strong integration with code written in other languages.
 
 _Note: this repository contains custom MuJS edits, original repository can be found at https://github.com/ccxvii/mujs._
+
+# Changes
+
+Highlighted changes:
+* String performance improvements, most notably ASCII string operations are now fast.
+* String allocations are now more effective.
+* New string API methods to get proper length and size using `js_getstrlen`, `js_getstrsize`.
+* New public API methods to ease the binding implementations.
+* New local registry API to define opaque properties on objects (GC aware).
+* Made `js_malloc`, `js_realloc` and `js_free` available in public API as well.
+* Execute scripts with custom environmental object using `js_loadstringE` API method.
+* New `js_dumpscript` API method to dump compiled script into binary format.
+* Added defines to exclude JS parser and compiler from compiled library.
+* New `js_swap` API method to swap values on the stack.
+* New `js_copyrange` to copy range of values on the stack.
+* New `js_getprototypeof` to get prototype of the object. 
+* Stack and instruction sizes are increased to cope with bigger scripts.
+* Stack trace is now printed on error.
+* Added script exit handler, to allow graceful script exit on request.
+* Added experimental standalone TS compiler (quite slow atm).
+
+All extensions and changes can be found in [CHANGELOG](CHANGELOG.md). 
 
 # Documentation
 
