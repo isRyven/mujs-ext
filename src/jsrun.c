@@ -1524,8 +1524,13 @@ void js_callscoped(js_State *J, js_CFunctionScoped cfun, void *data, int length)
 {
 	js_LocalScope scope;
 	js_createlocalscope(J, &scope, length + 1);
+	
 	cfun(J, data);
-	js_rotnpop(J, length + 2);
+	
+	js_Value *v = stackidx(J, -1);
+	TOP = BOT;
+	js_pushvalue2(J, v);
+
 	js_destroylocalscope(J, &scope);
 }
 
@@ -1533,8 +1538,13 @@ void js_callscoped2(js_State *J, js_CFunction cfun, int length)
 {
 	js_LocalScope scope;
 	js_createlocalscope(J, &scope, length + 1);
+	
 	cfun(J);
-	js_rotnpop(J, length + 2);
+
+	js_Value *v = stackidx(J, -1);
+	TOP = BOT;
+	js_pushvalue2(J, v);
+	
 	js_destroylocalscope(J, &scope);
 }
 
