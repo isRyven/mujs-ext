@@ -75,6 +75,8 @@ void testfunc(js_State *J, void *data)
 	mu_assert(js_isundefined(J, 0), "should be undefined");
 	mu_assert_int_eq(1, js_tointeger(J, 1));
 	mu_assert_int_eq(2, js_tointeger(J, 2));
+	js_pushnumber(J, 1);
+	js_pushnumber(J, 2);
 	js_pushnumber(J, 3);
 }
 
