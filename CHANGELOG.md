@@ -31,15 +31,13 @@
 * Added `js_loadbin`, `js_ploadbin` functions to parse the precompiled script binary. Script function is pushed on the stack on success.
 * Added `js_loadbinfile`, `js_ploadbinfile` functions to load precompiled scirpt binary from the file. 
 * Added `-c` and `-f` flags to mujs executable, which can be used to precompile and load scripts.
-* Added `-DENABLE_JS_COMPILER` and `-DENABLE_JSON_COMPILER` definitions to exclude js parser and compiler from the mujs library.
 * Converted API documentaion into markdown format.
 * Reverted `f5de9d4` - was affecting precompiled scripts size in a negative way.  
 * Added `-d` flag to mujs executable, which can be used to strip debug information from precompiled script, to ouput smaller binary.
 * Added `js_loadbinE` to load precompiled script with predefined environment variables (push object, call func).
-* Added `js_pushlstringu` function to specifically push unicode or ASCII encoded string of specified _size_.
-* Added standalone TypeScript compiler. Use `-DBUILD_TS_COMPILER` option.  
-* Added `-DBUILD_TESTS` option to enable project tests build.
-* Added `-DBUILD_JS_REPL` option to build mujs repl executable.
+* Added `js_pushlstringu` function to specifically push unicode or ASCII encoded string of specified _size_.  
+* Added `-DMUJS_TESTS` option to enable tests compilation.
+* Added `-DMUJS_REPL` option to build mujs repl executable.
 * Fixed `this` of primitive value was not converted to object when used in prototypes.
 * Fixed primitives don't create intermediate objects on each `get property` request anymore. Returns primitive prototype instead.
 * Fixed mem strings are no longer interned, saving on memory consumption.

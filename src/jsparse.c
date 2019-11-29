@@ -2,7 +2,7 @@
 #include "jslex.h"
 #include "jsparse.h"
 
-#ifndef JS_COMPILER_DISABLED
+#ifndef JS_NOCOMPILER
 
 #define LIST(h)			jsP_newnode(J, AST_LIST, 0, h, 0, 0, 0)
 

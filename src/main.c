@@ -233,7 +233,7 @@ static void jsB_repr(js_State *J)
 	js_repr(J, 1);
 }
 
-#ifndef JS_COMPILER_DISABLED
+#ifndef JS_NOCOMPILER
 static const char *require_js =
 	"function require(name) {\n"
 	"var cache = require.cache;\n"
@@ -362,7 +362,7 @@ int main(int argc, char **argv)
 
 	js_newcfunction(J, jsB_quit, "quit", 1);
 	js_setglobal(J, "quit");
-#ifndef JS_COMPILER_DISABLED
+#ifndef JS_NOCOMPILER
 	js_dostring(J, require_js);
 #endif
 	if (xoptind == argc) {

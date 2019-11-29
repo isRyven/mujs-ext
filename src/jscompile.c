@@ -4,7 +4,7 @@
 #include "jscompile.h"
 #include "jsvalue.h" /* for jsV_numbertostring */
 
-#ifndef JS_COMPILER_DISABLED
+#ifndef JS_NOCOMPILER
 
 #define cexp jsC_cexp /* collision with math.h */
 

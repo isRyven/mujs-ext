@@ -23,7 +23,6 @@ Highlighted changes:
 * Stack and instruction sizes are increased to cope with bigger scripts.
 * Stack trace is now printed on error.
 * Added script exit handler, to allow graceful script exit on request.
-* Added experimental standalone TS compiler (quite slow atm).
 
 All extensions and changes can be found in [CHANGELOG](CHANGELOG.md). 
 
