@@ -34,7 +34,7 @@ int jsY_tohex(int c)
 	return 0;
 }
 
-#ifndef JSON_PARSER_DISABLED
+#ifndef JSON_NOPARSER
 
 JS_NORETURN static void jsY_error(js_State *J, const char *fmt, ...) JS_PRINTFLIKE(2,3);
 
