@@ -1899,7 +1899,7 @@ static void jsR_run(js_State *J, js_Function *F)
 		case OP_TYPEOF:
 			str = js_typeof(J, -1);
 			js_pop(J, 1);
-			js_pushliteral(J, str);
+			js_pushconstu(J, str, 0);
 			break;
 
 		case OP_POS:
