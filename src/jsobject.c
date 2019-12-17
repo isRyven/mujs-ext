@@ -280,9 +280,9 @@ static void O_defineProperties(js_State *J)
 	js_copy(J, 1);
 }
 
-static void O_create_walk(js_State *J, js_Object *obj)
+static void O_create_walk(js_State *J, js_Object *obj, js_Object *props)
 {
-	hashtable_foreach(js_Property, ref, obj->properties) {
+	hashtable_foreach(js_Property, ref, props->properties) {
 		if (!(ref->atts & JS_DONTENUM)) {
 			if (ref->value.type != JS_TOBJECT)
 				js_typeerror(J, "not an object");
@@ -312,7 +312,7 @@ static void O_create(js_State *J)
 			js_typeerror(J, "not an object");
 		props = js_toobject(J, 2);
 		if (hashtable_count(props->properties))
-			O_create_walk(J, obj);
+			O_create_walk(J, obj, props);
 	}
 }
 
