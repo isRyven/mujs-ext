@@ -66,11 +66,10 @@ set(MUJS_H_SRC
 
 # MUSJ
 
-add_library(mujs_h INTERFACE)
-target_include_directories(mujs_h INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
 add_library(mujs STATIC ${MUJS_C_SRC} ${MUJS_H_SRC})
-target_link_libraries(mujs m mujs_h)
+target_include_directories(mujs PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
+target_link_libraries(mujs m)
 
 if(MUJS_REPL AND (PROJECT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR))
 	message(STATUS "Repl compilation is enabled")
