@@ -1,8 +1,6 @@
 #ifndef jsi_h
 #define jsi_h
 
-#include <mujs/mujs.h>
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stddef.h>
@@ -14,6 +12,7 @@
 #include <limits.h>
 #include <inttypes.h>
 
+#include <mujs/mujs.h>
 #include "hashtable.h"
 #include "jsutil.h"
 
