@@ -12,7 +12,7 @@ static js_Property *newproperty(js_State *J, js_Object *obj, const char *name)
 	node.getter = NULL;
 	node.setter = NULL;
 	js_Property *prop = hashtable_insert(obj->properties, node.hash, &node);
-	++obj->count;
+	obj->count = hashtable_count(obj->properties);
 	return prop;
 }
 
@@ -27,7 +27,7 @@ static js_Property *addproperty(js_State *J, js_Object *obj, const char *name)
 static void freeproperty(js_State *J, js_Object *obj, uint64_t hash)
 {
 	hashtable_remove(obj->properties, hash);
-	--obj->count;
+	obj->count = hashtable_count(obj->properties);
 }
 
 js_Object *jsV_newobject(js_State *J, enum js_Class type, js_Object *prototype)
@@ -109,7 +109,7 @@ void jsV_delproperty(js_State *J, js_Object *obj, const char *name)
 /* Flatten hierarchy of enumerable properties into an iterator object */
 static js_Iterator *itwalk(js_State *J, js_Iterator *iter, js_Object *obj, js_Object *seen)
 {
-	hashtable_foreach(js_Property, ref, obj->properties) {
+	hashtable_foreach_rev(js_Property, ref, obj->properties) {
 		if (!(ref->atts & JS_DONTENUM)) {
 			if (!seen || !jsV_getenumproperty(J, seen, ref->name)) {
 				js_Iterator *head = js_malloc(J, sizeof *head);

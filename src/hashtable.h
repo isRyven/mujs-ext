@@ -38,6 +38,10 @@ void hashtable_swap( hashtable_t* table, int index_a, int index_b );
     for (int __i__ = 0, __l__ = hashtable_count(table), __e__ = 1; __e__; --__e__) \
         for (T *varname = (T*)hashtable_items(table); __i__ < __l__; ++varname, ++__i__)
 
+#define hashtable_foreach_rev(T, varname, table) \
+    for (int __i__ = (hashtable_count(table) - 1), __e__ = 1; __e__; --__e__) \
+        for (T *varname = (T*)hashtable_items(table) + __i__; __i__ >= 0; --varname, --__i__)
+
 /* TODO: hashtable_foreach_safe */
 
 #endif /* hashtable_h */
