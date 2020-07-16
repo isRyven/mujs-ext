@@ -746,7 +746,7 @@ static void slist(int d, js_Ast *list)
 
 static void sblock(int d, js_Ast *list)
 {
-	ps("[\n");
+	ps("{\n");
 	in(d+1);
 	while (list) {
 		assert(list->type == AST_LIST);
@@ -757,7 +757,7 @@ static void sblock(int d, js_Ast *list)
 			in(d+1);
 		}
 	}
-	nl(); in(d); pc(']');
+	nl(); in(d); pc('}');
 }
 
 void jsP_dumplist(js_State *J, js_Ast *prog)

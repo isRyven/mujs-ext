@@ -4,7 +4,8 @@
 #include <unistd.h>
 #include <errno.h>
 
-#include <mujs/mujs.h>
+#include "jsi.h"
+#include "jsparse.h"
 
 #if defined(WIN32) || defined(_WIN32) || defined __CYGWIN__
   #define PATH_SEPARATOR '\\' 
@@ -163,9 +164,7 @@ static void jsB_write(js_State *J)
 	js_pushundefined(J);
 }
 
-static void jsB_read(js_State *J)
-{
-	const char *filename = js_tostring(J, 1);
+static char* read_file(js_State *J, const char *filename) {
 	FILE *f;
 	char *s;
 	int n, t;
@@ -205,9 +204,16 @@ static void jsB_read(js_State *J)
 	}
 	s[n] = 0;
 
+	fclose(f);
+	return s;
+}
+
+static void jsB_read(js_State *J)
+{
+	const char *filename = js_tostring(J, 1);
+	char *s = read_file(J, filename);
 	js_pushstring(J, s);
 	free(s);
-	fclose(f);
 }
 
 static void jsB_readline(js_State *J)
@@ -320,9 +326,10 @@ int main(int argc, char **argv)
 	int precompile = 0;
 	int loadprecompile = 0;
 	int stripdebug = 0;
+	int dumpast = 0;
 	int i, c;
 
-	while ((c = xgetopt(argc, argv, "isecfd")) != -1) {
+	while ((c = xgetopt(argc, argv, "isecfda")) != -1) {
 		switch (c) {
 		default: usage(); break;
 		case 'i': interactive = 1; break;
@@ -331,6 +338,7 @@ int main(int argc, char **argv)
 		case 'c': precompile = 1; break;
 		case 'f': loadprecompile = 1; break;
 		case 'd': stripdebug = 1; break;
+		case 'a': dumpast = 1; break;
 		}
 	}
 
@@ -367,6 +375,29 @@ int main(int argc, char **argv)
 #endif
 	if (xoptind == argc) {
 		interactive = 1;
+	} else if (dumpast) {
+		char* source = NULL;
+		c = xoptind++;
+		if (c == argc) {
+			printf("%s\n", "error: no script was specified");
+			goto fail;
+		}
+		if (js_try(J)) {
+			if (source) {
+				free(source);
+			}
+			printf("%s\n", js_tostring(J, -1));
+			goto fail;
+		}
+		const char *filename = argv[c];
+		source = read_file(J, filename);
+		if (js_try(J)) {
+			jsP_freeparse(J);
+			js_throw(J);
+		}
+		js_Ast *P = jsP_parse(J, filename, source);
+		jsP_dumplist(J, P);
+		free(source);
 	} else {
 		c = xoptind++;
 		js_newarray(J);
@@ -450,7 +481,7 @@ int main(int argc, char **argv)
 			free(input);
 		}
 	}
-
+fail:
 	js_gc(J, 0);
 	js_freestate(J);
 
